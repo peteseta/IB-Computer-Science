@@ -1,0 +1,8 @@
+def skip(COLLECTION):
+
+    loop while COLLECTION.hasNext()
+        output COLLECTION.getNext()
+        if COLLECTION.hasNext()
+            COLLECTION.getNext()
+        end if
+    end loop
