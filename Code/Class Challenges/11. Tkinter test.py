@@ -1,4 +1,4 @@
-from tkinter import *
+from tkinter import Button, Label, Listbox, Tk, Variable
 
 root = Tk()
 
