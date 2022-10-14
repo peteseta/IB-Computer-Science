@@ -3,8 +3,6 @@ actions:
   enabled:
     - trunk-announce
     - trunk-cache-prune
-    - trunk-check-pre-push
-    - trunk-fmt-pre-commit
     - trunk-upgrade-available
 runtimes:
   enabled:
