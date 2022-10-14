@@ -4,6 +4,7 @@ from tkinter import Button, Frame, Label, StringVar, Tk
 
 # returns sum of two random integers 1-6 inclusive (2 dice roll)
 def roll_dice():
+
     return random.randint(1, 6) + random.randint(1, 6)
 
 
