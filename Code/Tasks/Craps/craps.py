@@ -1,7 +1,6 @@
 from random import randint
 from tkinter import Button, Frame, Label, StringVar, Tk
 
-
 # returns sum of two random integers 1-6 inclusive (2 dice roll)
 def roll_dice():
     return randint(1, 6) + randint(1, 6)
@@ -27,7 +26,7 @@ def end_screen_frame(global_root, source):
     end_screen = Frame(global_root)
     end_screen.pack(side="top", expand=True, fill="both")
 
-    game_over = Label(end_screen, text="Game Over... Do you want to play again?")
+    game_over = Label(end_screen, text="Game Over. Do you want to play again?")
     game_over.grid(row=0, column=1)
 
     # prompt user to play again.
@@ -54,32 +53,32 @@ def point_frame(global_root, come_out_roll, point):
     result_text_var.set("")
 
     # handles rolling: roll the dice and depending on the bet update the result
-    def point_roll():
-        dice = roll_dice()
-
+    def calculate_point_roll(dice):
         if dice == 7:
             if bet == 0:
                 # win
-                update_result(1, dice)
+                return 1
             else:
                 # lose
-                update_result(0, dice)
+                return 0
         elif dice == target_point:
             if bet == 0:
                 # lose
-                update_result(0, dice)
+                return 0
             else:
                 # win
-                update_result(1, dice)
+                return 1
         elif bet == 1:
             # need to get point
-            update_result(2, dice)
+            return 2
         elif bet == 0:
             # need to get a 7
-            update_result(3, dice)
+            return 3
 
     # based on the result of the roll, update the result text and prompt the user to roll again or go to the end screen
-    def update_result(result, dice):
+    def point_roll():
+        dice = roll_dice()
+        result = calculate_point_roll(dice)
 
         # text to show to the user based on result
         result_text = (
@@ -99,7 +98,7 @@ def point_frame(global_root, come_out_roll, point):
         roll_result = Label(point, text=roll_text)
         roll_result.grid(row=0, column=2)
 
-        # if there is a win or loss, destroy the roll button and prompt the user to go next
+        # if there is a win or loss, destroy the roll button and prompt the user to go to end_screen
         if result == 0 or result == 1:
             print("win!" if result == 1 else "lose!")
             point_button.destroy()
@@ -135,14 +134,6 @@ def come_out_roll_frame(global_root, make_bet):
     result_text_var = StringVar()
     result_text_var.set("Roll the dice!")
 
-    # after the result has been calculated:
-    # if the game has been won, go to end screen. if there is a point go to the point frame.
-    def next_frame(result, dice):
-        if result == 0 or result == 1 or result == 2:
-            end_screen_frame(global_root, come_out_roll)
-        else:
-            point_frame(global_root, come_out_roll, dice)
-
     # calculate result of the come out roll based on bet type and roll
     def calculate_first_roll(dice):
         if bet == 1:
@@ -169,22 +160,16 @@ def come_out_roll_frame(global_root, make_bet):
                 # point
                 return 3
 
-    # shows the result of the come out roll based on calculate_first_roll()'s calculations
-    def update_result(dice):
+    # first roll of dice, on the initial press of the button. the dice is rolled and the result is shown to the user.
+    def first_roll():
+        # roll the dice and show the result
+        dice = roll_dice()
+        result_text_var.set("You rolled a " + str(dice) + "!")
+
+        # calculate result of the roll
         result = calculate_first_roll(dice)
-        print(
-            "point!"
-            if result == 3
-            else "win!"
-            if result == 1
-            else "lose!"
-            if result == 0
-            else "tie!"
-        )
 
-        come_out_roll_button.destroy()
-        come_out_roll_title.destroy()
-
+        # description of result for label and console
         result_text = (
             "You win!"
             if result == 1
@@ -194,24 +179,26 @@ def come_out_roll_frame(global_root, make_bet):
             if result == 2
             else "Point!"
         )
+        print(result_text)
+
+        # destroy the title and button as there is only one first roll.
+        come_out_roll_button.destroy()
+        come_out_roll_title.destroy()
+
+        # create a new label to show the result with description
         come_out_roll_result = Label(come_out_roll, text=result_text)
         come_out_roll_result.grid(row=3, column=2)
 
+        # prompt the user to go to the next frame:
+        # for a win/lose, go to the end. for a point, go to the point frame.
         come_out_roll_next = Button(
-            come_out_roll, text="Next", command=lambda: next_frame(result, dice)
+            come_out_roll,
+            text="Next",
+            command=lambda: point_frame(global_root, come_out_roll, dice)
+            if result == 3
+            else end_screen_frame(global_root, come_out_roll),
         )
         come_out_roll_next.grid(row=4, column=2)
-
-    # first roll of dice, on the initial press of the button. the dice is rolled and the result is shown to the user.
-    def first_roll():
-        # roll the dice
-        dice = roll_dice()
-
-        # show result of the dice roll
-        result_text_var.set("You rolled a " + str(dice) + "!")
-
-        # prompt to show result and go next
-        update_result(dice)
 
     # create frame for the come out roll
     come_out_roll = Frame(global_root)
@@ -289,7 +276,8 @@ def title_frame(global_root):
 
 
 # init window and set size
-root = Tk(className="Crap Craps v0.1")
+app_title = "Crap Craps v0.3"
+root = Tk(className=app_title)
 root.geometry("400x200")
 
 # start the game - call title frame
