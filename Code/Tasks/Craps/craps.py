@@ -1,6 +1,7 @@
 import random
 from tkinter import Button, Frame, Label, StringVar, Tk
 
+
 # returns sum of two random integers 1-6 inclusive (2 dice roll)
 def roll_dice():
     return random.randint(1, 6) + random.randint(1, 6)
@@ -240,21 +241,28 @@ def make_bet_frame(root, title):
     make_bet_button_nopass.grid(row=1, column=4)
 
 
+def title(root):
+    # create title screen frame
+    title = Frame(root)
+    title.pack(side="top", expand=True, fill="both")
+
+    # title text
+    title_label = Label(title, text='Welcome to Crap Craps. To start, press "Play"')
+    title_label.pack()
+
+    # button to start game
+    title_button = Button(
+        title, text="Play", command=lambda: make_bet_frame(root, title)
+    )
+    title_button.pack()
+
+
 # init window and set size
 root = Tk(className="Crap Craps v0.1")
 root.geometry("400x200")
 
-# create title screen frame and export global
-title = Frame(root)
-title.pack(side="top", expand=True, fill="both")
-
-# add title text
-title_label = Label(title, text='Welcome to Crap Craps. To start, press "Play"')
-title_label.pack()
-
-# add button to start game
-title_button = Button(title, text="Play", command=lambda: make_bet_frame(root, title))
-title_button.pack()
+# start the game - call title frame
+title(root)
 
 # window mainloop
 root.mainloop()
