@@ -1,7 +1,7 @@
 from random import randint
 from tkinter import CENTER, Button, Entry, Frame, IntVar, Label, StringVar, Tk
 
-# unicode symbols of the dice
+# unicode symbols of each dice face
 dice_unicode = {
     1: "\u2680",
     2: "\u2681",
@@ -11,40 +11,37 @@ dice_unicode = {
     6: "\u2685",
 }
 
-# init window and set size
+# init root object + window/set window size
 app_title = "Crap_Craps v0.7"
 root = Tk(className=app_title)
 root.geometry("400x200")
 
-# global counts for wins, losses, and ties, bets, money, bet amount, and the point
+# global tkinter IntVar type counts
 global_wins = IntVar(root, value=0)
 global_losses = IntVar(root, value=0)
 global_ties = IntVar(root, value=0)
 global_money = IntVar(root, value=0)
 global_bet_amount = IntVar(root, value=0)
+
+# global variable for the point (if there is a point after the come out roll)
 global_round_point = 0
 
-# shorthand for updating the global variables for wins, losses, and ties
+# shorthand for updating global variables
 def update_global_count(var, count):
     var.set(count)
 
 
-# deduct the amount betted from the money
-def set_global_bet():
-    global_money.set(int(global_money.get()) - int(global_bet_amount.get()))
-
-
-# add money to the global money variable
+# add money to the global money variable - after win or lose
 def payout(type):
     if type == 1:
         # 1:1 payout - get money back + money equivalent to however much was bet
         global_money.set(int(global_money.get()) + (2 * int(global_bet_amount.get())))
     if type == 0:
-        # in a tie, you only get our money back
+        # in a tie, you only get your money back
         global_money.set(int(global_money.get()) + int(global_bet_amount.get()))
 
 
-# TODO: comment
+# rolls two random dice, displays a frame with a graphic of the dice and the sum
 def roll_dice(source):
     d1 = randint(1, 6)
     d2 = randint(1, 6)
@@ -69,43 +66,36 @@ def roll_dice(source):
 
 # at this point, the user has won or lost the game
 def end_screen_frame(global_root, source):
-    # destroys the preceding frame; either the point frame or the come out roll frame depending when the user wins/loses
     source.destroy()
 
-    # handles quitting the game (if they don't want to play again)
+    # handles quitting the game
     def quit_game():
         exit()
 
-    # handles restarting the game (if they want to play again)
+    # handles restarting the game - only if there is money left
     def new_game():
-        # TODO: if there is no money, do not start a new game
         if int(global_money.get()) > 0:
             make_bet_frame(global_root, end_screen)
         else:
             game_over.configure(text="You have no money left!", fg="red")
 
-    # frame for the end screen
     end_screen = Frame(global_root)
     end_screen.pack(anchor=CENTER)
 
     game_over = Label(end_screen, text="Round Over. Do you want to play again?")
     game_over.grid(row=0, column=1)
 
-    # prompt user to play again.
-    # if they click yes then go back to the make bet screen.
+    # prompt user to play again or let them quit the game.
     play_again = Button(end_screen, text="Yes", command=lambda: new_game())
     play_again.grid(row=1, column=0)
 
-    # quit the game by calling quit_game() if the user clicks no.
     end_game = Button(end_screen, text="No", command=lambda: quit_game())
     end_game.grid(row=1, column=2)
 
 
 def point_frame(global_root, come_out_roll, point):
-    # destroy the come out roll frame
     come_out_roll.destroy()
 
-    # create frame for the point loop
     point = Frame(global_root)
     point.pack(anchor=CENTER)
 
@@ -120,7 +110,10 @@ def point_frame(global_root, come_out_roll, point):
         # need to get a 7
         result_text_var.set("Roll the dice. You have to roll a 7.")
 
-    # handles rolling: roll the dice and depending on the bet update the result
+    # calculates the result based on the rolled dice
+    # 1. if win/loss: calculate payout and credit money
+    # 2. update the global counts for win/loss/tie
+    # 3. let the user know their result
     def calculate_point_roll(dice):
         if dice == 7:
             if bet == 0:
@@ -155,7 +148,7 @@ def point_frame(global_root, come_out_roll, point):
             result_text_var.set("You have to roll a 7.")
             return 3
 
-    # based on the result of the roll, update the result text and prompt the user to roll again or go to the end screen
+    # rolls the dice and calculates the result each time
     def point_roll():
         dice = roll_dice(point)
         result = calculate_point_roll(dice)
@@ -169,29 +162,25 @@ def point_frame(global_root, come_out_roll, point):
             )
             point_next.grid(row=1, column=2)
 
-    # button to roll
     point_button = Button(point, text="Roll", command=lambda: point_roll())
     point_button.grid(row=3, column=2)
 
     # label updated with result of the roll once rolled
-    # e.g. a win or loss, or a prompt to keep rolling and that the user has to roll the point or a 7 (based on bet)
     point_result = Label(point, textvariable=result_text_var, font="System 15 bold")
     point_result.grid(row=2, column=2)
 
 
 def come_out_roll_frame(global_root, make_bet):
-    # destroy the bet screen
     make_bet.destroy()
 
-    # create frame for the come out roll
     come_out_roll = Frame(global_root)
     come_out_roll.pack(anchor=CENTER)
 
-    # init label to show the result of the roll. will later update with the result of the roll.
+    # init variable to show the result of the roll
     result_text_var = StringVar()
     result_text_var.set("Roll the dice!")
 
-    # calculate result of the come out roll based on bet type and roll
+    # check conditions for winning/losing based on bet; else there is a point
     def calculate_first_roll(dice):
         if bet == 1:
             if dice == 7 or dice == 11:
@@ -232,16 +221,12 @@ def come_out_roll_frame(global_root, make_bet):
                 result_text_var.set("Point!")
                 return 3
 
-    # first roll of dice, on the initial press of the button. the dice is rolled and the result is shown to the user.
+    # rolls dice and shows result
     def first_roll():
-        # roll the dice and show the result
         dice = roll_dice(come_out_roll)
-        print(dice)
-
-        # calculate result of the roll
         result = calculate_first_roll(dice)
 
-        # if there is a point, set the global round point variable
+        # set the global round point variable
         global global_round_point
         global_round_point = dice
 
@@ -263,7 +248,6 @@ def come_out_roll_frame(global_root, make_bet):
     come_out_roll_title = Label(come_out_roll, text="Time for the come out roll!")
     come_out_roll_title.grid(row=0, column=2)
 
-    # button to roll for the first time. calls first_roll()
     come_out_roll_button = Button(
         come_out_roll, text="Roll", command=lambda: first_roll()
     )
@@ -273,17 +257,20 @@ def come_out_roll_frame(global_root, make_bet):
     come_out_roll_label.grid(row=2, column=2)
 
 
-def make_bet_frame(global_root, source, is_title=0):
-    # call info frame on the first time, as the game has now started.
-    info_frame(global_root) if is_title else None
+# make_bet helper function - deduct the amount betted from money
+def set_global_bet():
+    global_money.set(int(global_money.get()) - int(global_bet_amount.get()))
 
-    # destroy the source screen: either the title if this is the first game or the end_screen if the user is playing again
+
+def make_bet_frame(global_root, source, is_title=0):
+    # draw the info frame only on the first time
+    info_frame(global_root) if is_title else None
     source.destroy()
 
     # init variable for the value of the bet
     bet_amount = StringVar()
 
-    # when the bet_amount updates, update global variable bet_amount
+    # when the bet_amount entrybox updates, update global variable bet_amount
     bet_amount.trace(
         "w",
         lambda name, index, mode, sv=bet_amount: update_global_count(
@@ -291,56 +278,54 @@ def make_bet_frame(global_root, source, is_title=0):
         ),
     )
 
-    # TODO: comment
+    # shows an error message if number is invalid
     def bet_amount_error():
         make_bet_amount_label.configure(text="Please enter a valid number!", fg="red")
 
-    def next_frame(type):
-        if type:
-            set_global_bet()
-            come_out_roll_frame(global_root, make_bet)
-        else:
-            set_global_bet()
-            come_out_roll_frame(global_root, make_bet)
-
-    # handles making the bet - Pass Line
+    # goes to the come out roll frame if the bet amount is valid
     def pass_line(global_root, make_bet):
         global bet
         bet = 1
-        next_frame(1) if bet_amount.get().isdigit() and int(bet_amount.get()) <= int(
-            global_money.get()
-        ) and int(bet_amount.get()) != 0 else bet_amount_error()
+        if (
+            bet_amount.get().isdigit()
+            and int(bet_amount.get()) <= int(global_money.get())
+            and int(bet_amount.get()) != 0
+        ):
+            set_global_bet()
+            come_out_roll_frame(global_root, make_bet)
+        else:
+            bet_amount_error()
 
-    # handles making the bet - No Pass Line
     def no_pass_line(global_root, make_bet):
         global bet
         bet = 0
-        next_frame(0) if bet_amount.get().isdigit() and int(bet_amount.get()) <= int(
-            global_money.get()
-        ) and int(bet_amount.get()) != 0 else bet_amount_error()
+        if (
+            bet_amount.get().isdigit()
+            and int(bet_amount.get()) <= int(global_money.get())
+            and int(bet_amount.get()) != 0
+        ):
+            set_global_bet()
+            come_out_roll_frame(global_root, make_bet)
+        else:
+            bet_amount_error()
 
-    # create frame for bet placing screen
     make_bet = Frame(global_root)
     make_bet.pack(anchor=CENTER)
 
-    # prompt user to make bet
     make_bet_label = Label(make_bet, text="Make your bet!", font="System 15 bold")
     make_bet_label.grid(row=0, column=1)
 
-    # allows the user to enter how much they want to bet
     make_bet_amount_label = Label(make_bet, text="Bet amount:")
     make_bet_amount_label.grid(row=1, column=1)
 
     make_bet_amount = Entry(make_bet, textvariable=bet_amount)
     make_bet_amount.grid(row=2, column=1)
 
-    # button to make pass line bet
     make_bet_button_pass = Button(
         make_bet, text="Pass Line", command=lambda: pass_line(global_root, make_bet)
     )
     make_bet_button_pass.grid(row=3, column=0)
 
-    # button to make no pass line bet
     make_bet_button_nopass = Button(
         make_bet,
         text="No Pass Line",
@@ -362,11 +347,9 @@ def title_frame(global_root):
         ),
     )
 
-    # create title screen frame
     title = Frame(global_root)
     title.pack(anchor=CENTER)
 
-    # title text
     title_label = Label(
         title,
         text="Welcome to Crap Craps!",
@@ -384,7 +367,6 @@ def title_frame(global_root):
     )
     payout_desc.pack()
 
-    # user to enter the amt of money they want to start with
     chip_exchange_label = Label(
         title, text="Enter the amount of money you want to exchange."
     )
@@ -392,7 +374,6 @@ def title_frame(global_root):
     chip_exchange = Entry(title, textvariable=starting_money)
     chip_exchange.pack()
 
-    # starts game if the user has entered a valid amount of money (i.e. a number)
     title_button = Button(
         title,
         text="Play",
@@ -403,13 +384,11 @@ def title_frame(global_root):
     title_button.pack()
 
 
-# frame for global money and bet counts
 def info_frame(global_root):
     info = Frame(global_root, bg="Black")
     info.pack(side="bottom", fill="both")
 
-    # there must be a better way to do this. this looks horrible...
-    # WARN: spaghetti code
+    # TODO: there must be a better way to do this. spaghetti code
     win_count = Label(info, text="Wins: ", bg="Black", fg="White")
     win_count.grid(row=0, column=0)
     win_count_num = Label(info, textvariable=global_wins, bg="Black", fg="White")
