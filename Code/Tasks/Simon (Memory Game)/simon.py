@@ -7,130 +7,95 @@
 from tkinter import *
 from tkmacosx import Button
 import random
+from functools import partial
+
+# init the window
+root = Tk()
+root.title("Simon Memory Game")
+
+# init buttons in a loop
+colors = ["red", "green", "blue", "yellow"]
+
+# times to flash
+level = 5
+seq_pos = 0
+flash_sequence = []
+
+# clear sequence and flash
+def start_game():
+    global flash_sequence
+    flash_sequence = []
+    flash_colors()
 
 
-class Simon:
-    def __init__(self):
-        window = Tk()
-        window.title("Simon")
+def end_game():
+    pass
 
-        self.score = 0
 
-        # create a frame to hold the buttons
-        frame1 = Frame(window)
-        frame1.pack()
-        # create the 4 buttons
-        self.red = Button(frame1, text="Red", command=self.redPressed)
-        self.red.grid(row=1, column=1)
-        self.green = Button(frame1, text="Green", command=self.greenPressed)
-        self.green.grid(row=1, column=2)
-        self.blue = Button(frame1, text="Blue", command=self.bluePressed)
-        self.blue.grid(row=1, column=3)
-        self.yellow = Button(frame1, text="Yellow", command=self.yellowPressed)
-        self.yellow.grid(row=1, column=4)
+# use tkinter await to flash the button with text color
+def flash(color):
+    buttons[colors.index(color)].config(bg=color)
+    print(f"flashing {color} on")
+    buttons[colors.index(color)].after(
+        400, buttons[colors.index(color)].config(bg="white")
+    )
+    print(f"flashing {color} off")
 
-        # create a frame to hold the score
-        frame2 = Frame(window)
-        frame2.pack()
-        # create a label to display the score
-        self.scoreLabel = Label(frame2, text="Score: " + str(self.score))
-        self.scoreLabel.pack()
 
-        # create a frame to hold the new game button
-        frame3 = Frame(window)
-        frame3.pack()
-        # create a button for new game
-        self.newGame = Button(
-            frame3, text="New Game", command=lambda: self.startNewGame()
+# flash a random color level times
+def flash_colors():
+    for i in range(level):
+        color = random.choice(colors)
+        flash_sequence.append(color)
+        print(flash_sequence)
+        flash(color)
+
+
+# check if the button pressed is the correct color
+def button_click(color):
+    global seq_pos
+    global flash_sequence
+    global level
+    if color == flash_sequence[seq_pos]:
+        print("correct")
+        seq_pos += 1
+    else:
+        print("wrong")
+        seq_pos = 0
+        flash_sequence = []
+        end_game()
+    if seq_pos == level:
+        print("next level")
+        flash_sequence = []
+        level += 1
+        seq_pos = 0
+        flash_colors()
+
+
+# color button
+buttons = []
+for color in colors:
+    buttons.append(
+        Button(
+            root,
+            bg="white",
+            height=150,
+            width=150,
+            text=color,
+            command=partial(button_click, color),
         )
-        self.newGame.pack()
+    )
 
-        # create a list to hold the sequence of colors to be flashed
-        self.sequence = []
+# place buttons in grid
+for i in range(len(buttons)):
+    buttons[i].grid(row=i // 2, column=i % 2)
 
-        # create a variable to hold the current color to be flashed
-        self.currentColor = ""
+# start game button and init score label
+start_button = Button(root, text="Start Game", command=start_game)
+start_button.grid(row=2, column=0, columnspan=2)
 
-        self.currentColorPressed = ""
-
-        # create a variable to hold the current index in the sequence
-        self.currentIndex = 0
-
-        # create a variable to hold the number of colors to be flashed
-        self.numberOfColors = 5
-
-        window.mainloop()
-
-    # resets variables and starts a new game
-    def startNewGame(self):
-        self.score = 0
-        self.scoreLabel["text"] = "Score: " + str(self.score)
-        self.currentIndex = 0
-        self.numberOfColors = 5
-        self.flashColors()
-
-    # flash random colors in the sequence
-    def flashColors(self):
-        self.sequence = []
-        for i in range(self.numberOfColors):
-            self.sequence.append(random.choice(["red", "green", "blue", "yellow"]))
-        for color in self.sequence:
-            if color == "red":
-                # self.red["bg"] = "red"
-                # self.red.after(500)
-                # self.red["bg"] = "white"
-                self.red.after(200, lambda: self.red.configure(bg="red"))
-                self.red.after(750, lambda: self.red.configure(bg="white"))
-            elif color == "green":
-                # self.green["bg"] = "green"
-                # self.green.after(500)
-                # self.green["bg"] = "white"
-                self.green.after(200, lambda: self.green.configure(bg="green"))
-                self.green.after(750, lambda: self.green.configure(bg="white"))
-            elif color == "blue":
-                # self.blue["bg"] = "blue"
-                # self.blue.after(500)
-                # self.blue["bg"] = "white"
-                self.blue.after(200, lambda: self.blue.configure(bg="blue"))
-                self.blue.after(750, lambda: self.blue.configure(bg="white"))
-            elif color == "yellow":
-                # self.yellow["bg"] = "yellow"
-                # self.yellow.after(500)
-                # self.yellow["bg"] = "white"
-                self.yellow.after(200, lambda: self.yellow.configure(bg="yellow"))
-                self.yellow.after(750, lambda: self.yellow.configure(bg="white"))
-
-    # checks the color pressed against the colors in the sequence
-    def checkColor(self):
-        if self.currentColorPressed == self.sequence[self.currentIndex]:
-            self.currentIndex += 1
-            if self.currentIndex == self.numberOfColors:
-                self.score += 1
-                self.scoreLabel["text"] = "Score: " + str(self.score)
-                self.currentIndex = 0
-                self.numberOfColors += 1
-                self.flashColors()
-        else:
-            self.scoreLabel["text"] = "Score: " + str(self.score)
-            self.currentIndex = 0
-            self.numberOfColors = 1
-            self.flashColors()
-
-    def redPressed(self):
-        self.currentColorPressed = "red"
-        self.checkColor()
-
-    def greenPressed(self):
-        self.currentColorPressed = "green"
-        self.checkColor()
-
-    def bluePressed(self):
-        self.currentColorPressed = "blue"
-        self.checkColor()
-
-    def yellowPressed(self):
-        self.currentColorPressed = "yellow"
-        self.checkColor()
+score_label = Label(root, text="Level: 1")
+score_label.grid(row=3, column=0, columnspan=2)
 
 
-game = Simon()
+root.mainloop()
