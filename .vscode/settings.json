@@ -1,6 +1,7 @@
 {
     "cSpell.words": [
-        "nopass"
+        "nopass",
+        "unclickable"
     ],
     "cSpell.language": "en,en-US",
     "python.testing.unittestArgs": [
