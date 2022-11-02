@@ -4,7 +4,6 @@
 # GUI is created using tkinter. It has 4 buttons, each with a different color: red, green, blue, yellow
 # you will also need a button to start a new game and a field for score from the last round
 
-from faulthandler import disable
 from tkinter import *
 from tkmacosx import Button
 import random
