@@ -1,0 +1,1 @@
+  # tab_index = [i for i in range(len(MASTER_TABS)) if MASTER_TABS[i] == tab]

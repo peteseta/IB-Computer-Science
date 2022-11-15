@@ -26,6 +26,9 @@ def adjust_speed(amt):
 def start_game():
     global level
     level = 0
+
+    global flash_sequence
+    flash_sequence = []
     simon()
 
 
@@ -44,7 +47,7 @@ def highscore(level):
 
 
 def simon():
-    global flash_sequence
+    # global flash_sequence
     flash_sequence = []
 
     global seq_pos
