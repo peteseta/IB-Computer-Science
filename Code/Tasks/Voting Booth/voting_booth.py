@@ -1,17 +1,28 @@
-from tkinter import ttk, Tk, Label, Frame, Button, Entry, StringVar, IntVar, Message, Radio
-from sqlite3 import *
-from random import randint
 from os import path
+from random import randint
+from sqlite3 import *
+from tkinter import (
+    ttk,
+    Tk,
+    Label,
+    Frame,
+    Button,
+    Entry,
+    StringVar,
+    Message,
+    Radiobutton,
+)
 
-# init local variables
+# init global variables
 local_voter_id = 0
+parties = ["Party A", "Party B"]
 
 # init database
 conn = connect("voting_booth.db")
 cursor = conn.cursor()
 
 # if the database does not exist, create the schema
-if path.isfile("voting_booth.db") is False:
+if path.exists("voting_booth.db") is False:
     print("Creating tables...")
     cursor.execute(
         """CREATE TABLE voters(
@@ -27,7 +38,6 @@ if path.isfile("voting_booth.db") is False:
 root = Tk()
 root.title("Voting Booth v0.1")
 root.geometry("500x500")
-
 
 # tab setup
 tabs = ttk.Notebook(root)
@@ -66,44 +76,57 @@ first_name = StringVar()
 last_name = StringVar()
 
 first_name_label = Label(registration_frame, text="First Name:")
-first_name_label.place(relx=0.25, rely=0.25, anchor="center")
+first_name_label.place(relx=0.30, rely=0.25, anchor="e")
 first_name_entry = Entry(registration_frame, textvariable=first_name)
 first_name_entry.place(relx=0.55, rely=0.25, anchor="center")
 
 last_name_label = Label(registration_frame, text="Last Name:")
-last_name_label.place(relx=0.25, rely=0.35, anchor="center")
+last_name_label.place(relx=0.30, rely=0.35, anchor="e")
 last_name_entry = Entry(registration_frame, textvariable=last_name)
 last_name_entry.place(relx=0.55, rely=0.35, anchor="center")
 
 # party affiliation
-party_affiliation = IntVar()
-parties = ["Party A", "Party B"]
-party_radios = [Radio(registration_frame, text=party, variable=party_affiliation, value=i) for i, party in enumerate(parties)]
-[party.place()for party in party_radios:
-    
+party_label = Label(registration_frame, text="Party Affiliation:")
+party_label.place(relx=0.25, rely=0.40)
+
+party_affiliation_var = StringVar(registration_frame)
+party_radios = [
+    Radiobutton(registration_frame, text=party, variable=party_affiliation_var, value=i)
+    for i, party in enumerate(parties)
+]
+for i, radio in enumerate(party_radios):
+    radio.place(relx=0.60, rely=0.40 + (i * 0.05), anchor="n")
+
 
 # submission (voter id generation)
 def register_voter():
     first_name = first_name_entry.get()
     last_name = last_name_entry.get()
+    party_affiliation = party_affiliation_var.get()
+    print("registering", first_name, last_name, "with party:", party_affiliation)
+
     report_info(f"Registering {first_name} {last_name}...")
 
     # generate a random 5 digit voter id that isn't already taken
     taken_voter_ids = cursor.execute("SELECT voter_id FROM voters").fetchall()
-    while voter_id := randint(10000, 99999) in taken_voter_ids:
+    voter_id = randint(10000, 99999)
+    while voter_id in taken_voter_ids:
         voter_id = randint(10000, 99999)
 
     # add voter to database
     cursor.execute(
-        "INSERT INTO voters VALUES (?, ?, ?)", (first_name, last_name, voter_id)
+        "INSERT INTO voters VALUES (?, ?, ?, ?)",
+        (first_name, last_name, party_affiliation, voter_id),
     )
     conn.commit()
 
     # display voter id
+    report_info(f"Your voter id is {voter_id}. Please remember this number for voting.")
+    print("voter id:", voter_id)
 
 
 submit = Button(registration_frame, text="Submit", command=lambda: register_voter())
-submit.place(relx=0.5, rely=0.45, anchor="center")
+submit.place(relx=0.5, rely=0.60, anchor="center")
 
 # ---------- voting ----------
 voting_frame = Frame(tabs)
@@ -112,13 +135,11 @@ tabs.add(voting_frame, text="Voting")
 title = Label(voting_frame, text="Voting")
 title.pack()
 
-
 # ---------- results ----------
 results_frame = Frame(tabs)
 tabs.add(results_frame, text="Results")
 
 title = Label(results_frame, text="Results")
 title.pack()
-
 
 root.mainloop()
