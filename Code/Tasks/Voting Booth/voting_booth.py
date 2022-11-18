@@ -1,4 +1,3 @@
-from os import path
 from random import randint
 from sqlite3 import *
 from tkinter import (
@@ -24,8 +23,8 @@ cursor = conn.cursor()
 
 # create table if it doesn't exist
 if (
-    len(cursor.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall())
-    == 0
+        len(cursor.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall())
+        == 0
 ):
     print("Creating tables...")
     cursor.execute(

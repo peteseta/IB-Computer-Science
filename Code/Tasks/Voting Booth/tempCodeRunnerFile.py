@@ -1,1 +1,0 @@
-report_info("now voting!")
