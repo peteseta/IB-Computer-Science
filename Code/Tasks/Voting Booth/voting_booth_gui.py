@@ -1,4 +1,5 @@
-from tkinter import Tk, Canvas, Entry, Frame, ttk, DISABLED
+from tkinter import Tk, Canvas, Entry, Frame, ttk, DISABLED, Text, StringVar
+
 from tkmacosx import Button
 
 root = Tk()
@@ -12,7 +13,7 @@ root.geometry("550x750")
 root.configure(bg="#1B1B1B")
 root.resizable(False, False)
 
-# just for the title
+# ----------- title ---------------
 title_canvas = Canvas(
     root, bg="#1B1B1B", height=83, width=550, bd=0, highlightthickness=0, relief="flat"
 )
@@ -28,6 +29,7 @@ title_canvas.create_text(
     font=("Helvetica Bold", 32 * -1),
 )
 
+# ----------- registration ---------------
 registration = Frame(root)
 notebook.add(registration, text="Registration")
 
@@ -75,7 +77,7 @@ registration_canvas.create_text(
 )
 
 # first name entry
-entry_1 = Entry(
+reg_first_name_entry = Entry(
     registration,
     bd=0,
     bg="#F5F5F5",
@@ -83,7 +85,7 @@ entry_1 = Entry(
     font="Helvetica 16",
     highlightthickness=0,
 )
-entry_1.place(x=30.0, y=133.0, width=430.0, height=29.0)
+reg_first_name_entry.place(x=30.0, y=133.0, width=430.0, height=29.0)
 
 # last name heading
 registration_canvas.create_text(
@@ -96,7 +98,7 @@ registration_canvas.create_text(
 )
 
 # last name entry
-entry_2 = Entry(
+reg_last_name_entry = Entry(
     registration,
     bd=0,
     bg="#F5F5F5",
@@ -104,7 +106,7 @@ entry_2 = Entry(
     font="Helvetica 16",
     highlightthickness=0,
 )
-entry_2.place(x=30.0, y=214.0, width=430.0, height=29.0)
+reg_last_name_entry.place(x=30.0, y=214.0, width=430.0, height=29.0)
 
 # party affil heading
 registration_canvas.create_text(
@@ -117,7 +119,7 @@ registration_canvas.create_text(
 )
 
 # democrat party affil button
-button_2 = Button(
+reg_dem_affil_button = Button(
     registration,
     text="Democrat",
     font="Helvetica 18",
@@ -125,10 +127,10 @@ button_2 = Button(
     fg="#000716",
     borderwidth=0,
     highlightthickness=0,
-    command=lambda: print("button_2 clicked"),
+    command=lambda: print("democrat clicked"),
     relief="flat",
 )
-button_2.place(x=30.0, y=295.0, width=108.0, height=37.0)
+reg_dem_affil_button.place(x=30.0, y=295.0, width=108.0, height=37.0)
 
 # democrat party selected indicator
 registration_canvas.create_text(
@@ -143,7 +145,7 @@ registration_canvas.create_text(
 )
 
 # republican party affil button
-button_3 = Button(
+reg_rep_affil_button = Button(
     registration,
     text="Republican",
     font="Helvetica 18",
@@ -151,10 +153,10 @@ button_3 = Button(
     fg="#000716",
     borderwidth=0,
     highlightthickness=0,
-    command=lambda: print("button_3 clicked"),
+    command=lambda: print("republican clicked"),
     relief="flat",
 )
-button_3.place(x=145.0, y=295.0, width=118.0, height=37.0)
+reg_rep_affil_button.place(x=145.0, y=295.0, width=118.0, height=37.0)
 
 # republican party selected indicator
 registration_canvas.create_text(
@@ -179,7 +181,7 @@ registration_canvas.create_text(
 )
 
 # submit button
-button_1 = Button(
+reg_submit_button = Button(
     registration,
     text="SUBMIT",
     font="Helvetica 20 bold",
@@ -187,10 +189,10 @@ button_1 = Button(
     fg="white",
     borderwidth=0,
     highlightthickness=0,
-    command=lambda: print("button_1 clicked"),
+    command=lambda: print("submit clicked"),
     relief="flat",
 )
-button_1.place(x=30.0, y=553.0, width=90.0, height=29.0)
+reg_submit_button.place(x=30.0, y=553.0, width=90.0, height=29.0)
 
 # voter id heading
 registration_canvas.create_text(
@@ -219,7 +221,340 @@ registration_canvas.create_text(
     font=("Helvetica Bold", 36 * -1),
 )
 
-window2 = Frame(root)
-notebook.add(window2, text="Voting")
+# ----------- voting ---------------
 
+voting = Frame(root)
+notebook.add(voting, text="Voting")
+
+voting_canvas = Canvas(
+    voting,
+    bg="#FFFFFF",
+    height=617,
+    width=500,
+    bd=0,
+    highlightthickness=0,
+    relief="ridge"
+)
+voting_canvas.pack(expand=True, fill="both")
+
+# voting id entry
+voting_canvas.create_text(
+    30.0,
+    25.0,
+    anchor="nw",
+    text="enter your voter ID:",
+    fill="#1B1B1B",
+    font=("Helvetica Bold", 20)
+)
+
+vot_voterid_entry = Entry(
+    voting,
+    bd=0,
+    bg="#F5F5F5",
+    fg="#000716",
+    font=("Helvetica Bold", 36),
+    highlightthickness=0
+)
+vot_voterid_entry.place(
+    x=30.0,
+    y=54.0,
+    width=135.0,
+    height=42.0
+)
+
+# ----- vote selector
+voting_canvas.create_rectangle(
+    30.0,
+    198.0,
+    35.0,
+    324.0,
+    fill="#F5F5F5",
+    outline="")
+
+voting_canvas.create_text(
+    30.0,
+    126.0,
+    anchor="nw",
+    text="SWITCH RACE",
+    fill="#C8C8C8",
+    font=("Helvetica Regular", 15)
+)
+
+vot_left_arrow = Button(
+    voting,
+    text="←",
+    fg="#C9C9C9",
+    bg="#F5F5F5",
+    borderwidth=0,
+    highlightthickness=0,
+    command=lambda: print("left arrow clicked"),
+    relief="flat"
+)
+vot_left_arrow.place(
+    x=30.0,
+    y=149.0,
+    width=36.0,
+    height=30.0
+)
+
+vot_right_arrow = Button(
+    voting,
+    text="→",
+    fg="#C9C9C9",
+    bg="#F5F5F5",
+    borderwidth=0,
+    highlightthickness=0,
+    command=lambda: print("right arrow clicked"),
+    relief="flat"
+)
+vot_right_arrow.place(
+    x=73.0,
+    y=149.0,
+    width=36.0,
+    height=30.0
+)
+
+voting_canvas.create_text(
+    118.0,
+    152.0,
+    anchor="nw",
+    text="1 of 4",
+    fill="#C8C8C8",
+    font=("Helvetica Regular", 15 * -1)
+)
+
+voting_canvas.create_text(
+    44.0,
+    211.0,
+    anchor="nw",
+    text="President",
+    fill="#1B1B1B",
+    font=("Helvetica Bold", 20 * -1)
+)
+
+voting_canvas.create_text(
+    44.0,
+    192.0,
+    anchor="nw",
+    text="POSITION",
+    fill="#C8C8C8",
+    font=("Helvetica Regular", 15 * -1)
+)
+
+# ----- candidate A
+vot_candidate_a_button = Button(
+    voting,
+    bg="#F5F5F5",
+    fg="#1C1C1C",
+    font="Helvetica 20",
+    text="Samath Gurung",
+    justify="left",
+    borderwidth=0,
+    highlightthickness=0,
+    command=lambda: print("choice a clicked"),
+    relief="flat",
+)
+vot_candidate_a_button.place(
+    x=44.0,
+    y=243.0,
+    width=337.0,
+    height=37.0
+)
+
+voting_canvas.create_text(
+    293.0,
+    250.0,
+    anchor="nw",
+    text="SELECTED",
+    fill="#848484",
+    font=("Helvetica Regular", 15 * -1)
+)
+
+voting_canvas.create_text(
+    392.0,
+    249.0,
+    anchor="nw",
+    text="(R)",
+    fill="#C8C8C8",
+    font=("Helvetica Medium", 20 * -1)
+)
+
+# ----- candidate B
+candidate_b_name = StringVar(voting, "Yoyo Feng")
+vot_candidate_b_button = Button(
+    voting,
+    bg="#F5F5F5",
+    fg="#1C1C1C",
+    font="Helvetica 20",
+    textvariable=candidate_b_name,
+    justify="left",
+    borderwidth=0,
+    highlightthickness=0,
+    command=lambda: print("choice b clicked"),
+    relief="flat"
+)
+vot_candidate_b_button.place(
+    x=44.0,
+    y=287.0,
+    width=337.0,
+    height=37.0
+)
+
+voting_canvas.create_text(
+    293.0,
+    293.0,
+    anchor="nw",
+    text="SELECTED",
+    fill="#848484",
+    font=("Helvetica Regular", 15 * -1)
+)
+
+voting_canvas.create_text(
+    392.0,
+    293.0,
+    anchor="nw",
+    text="(D)",
+    fill="#C8C8C8",
+    font=("Helvetica Medium", 20 * -1)
+)
+
+# summary of what the user voted for
+voting_canvas.create_text(
+    30.0,
+    370.0,
+    anchor="nw",
+    text="here’s who you voted for:",
+    fill="#1B1B1B",
+    font=("Helvetica Bold", 20 * -1)
+)
+
+vot_feedback_box = Text(
+    voting,
+    bd=0,
+    bg="#F5F5F5",
+    fg="#000716",
+    highlightthickness=0
+)
+vot_feedback_box.place(
+    x=30.0,
+    y=402.0,
+    width=417.0,
+    height=99.0
+)
+
+# submit button
+voting_canvas.create_text(
+    30.0,
+    525.0,
+    anchor="nw",
+    text="confirm your votes:",
+    fill="#1B1B1B",
+    font=("Helvetica Bold", 20 * -1)
+)
+
+vot_submit_button = Button(
+    voting,
+    text="SUBMIT",
+    font="Helvetica 20 bold",
+    bg="black",
+    fg="white",
+    borderwidth=0,
+    highlightthickness=0,
+    command=lambda: print("submit clicked"),
+    relief="flat"
+)
+vot_submit_button.place(
+    x=30.0,
+    y=553.0,
+    width=90.0,
+    height=29.0
+)
+
+# ----------- results ---------------
+
+results = Frame(root)
+notebook.add(results, text="Results")
+
+results_canvas = Canvas(
+    results,
+    bg="#FFFFFF",
+    height=617,
+    width=500,
+    bd=0,
+    highlightthickness=0,
+    relief="ridge"
+)
+results_canvas.pack(expand=True, fill="both")
+
+results_canvas.create_text(
+    231.0,
+    44.0,
+    anchor="nw",
+    text="President",
+    fill="#1B1B1B",
+    font=("Helvetica Bold", 20 * -1)
+)
+
+results_canvas.create_text(
+    231.0,
+    25.0,
+    anchor="nw",
+    text="RESULTS FOR",
+    fill="#C8C8C8",
+    font=("Helvetica Regular", 15 * -1)
+)
+
+results_canvas.create_text(
+    34.0,
+    20.0,
+    anchor="nw",
+    text="SWITCH RACE",
+    fill="#C8C8C8",
+    font=("Helvetica Regular", 15 * -1)
+)
+
+results_canvas.create_text(
+    122.0,
+    46.0,
+    anchor="nw",
+    text="1 of 4",
+    fill="#C8C8C8",
+    font=("Helvetica Regular", 15 * -1)
+)
+
+res_left_arrow = Button(
+    results,
+    text="←",
+    fg="#C9C9C9",
+    bg="#F5F5F5",
+    borderwidth=0,
+    highlightthickness=0,
+    command=lambda: print("left arrow clicked"),
+    relief="flat"
+)
+res_left_arrow.place(
+    x=34.0,
+    y=43.0,
+    width=36.0,
+    height=30.0
+)
+
+res_right_arrow = Button(
+    results,
+    text="→",
+    fg="#C9C9C9",
+    bg="#F5F5F5",
+    borderwidth=0,
+    highlightthickness=0,
+    command=lambda: print("right arrow clicked"),
+    relief="flat"
+)
+res_right_arrow.place(
+    x=77.0,
+    y=43.0,
+    width=36.0,
+    height=30.0
+)
+
+# ----------- keep at end ------------
 root.mainloop()
