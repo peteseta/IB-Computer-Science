@@ -1,6 +1,33 @@
+from sqlite3 import *
 from tkinter import Tk, Canvas, Entry, Frame, ttk, DISABLED, Text, StringVar
 
 from tkmacosx import Button
+
+# --------- database setup ---------
+local_voter_id = 0
+parties = ["Party A", "Party B"]
+
+# init database
+conn = connect("voting_booth.db")
+cursor = conn.cursor()
+
+# create table if it doesn't exist
+if (
+        len(cursor.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall())
+        == 0
+):
+    print("Creating tables...")
+    cursor.execute(
+        """CREATE TABLE voters(
+        first_name TEXT,
+        last_name TEXT,
+        party_affiliation INTEGER,
+        voter_id INTEGER
+        )"""
+    )
+    conn.commit()
+
+# --------- tkinter setup ----------
 
 root = Tk()
 
@@ -30,6 +57,48 @@ title_canvas.create_text(
 )
 
 # ----------- registration ---------------
+
+first_name_entry = StringVar()
+last_name_entry = StringVar()
+party_affiliation_var = StringVar()
+
+
+def register_voter():
+    # TODO: validate input/check for complete form entry
+
+    voter_first_name = first_name_entry.get()
+    voter_last_name = last_name_entry.get()
+    party_affiliation = party_affiliation_var.get()
+    print(
+        "registering",
+        voter_first_name,
+        voter_last_name,
+        "with party:",
+        party_affiliation,
+    )
+
+    report_info(f"Registering {voter_first_name} {voter_last_name}...")
+
+    # generate a random 5 digit voter id that isn't already taken
+    taken_voter_ids = cursor.execute("SELECT voter_id FROM voters").fetchall()
+    voter_id = randint(10000, 99999)
+    while voter_id in taken_voter_ids:
+        voter_id = randint(10000, 99999)
+
+    # TODO: sanitize inputs
+
+    # add voter to database
+    cursor.execute(
+        "INSERT INTO voters VALUES (?, ?, ?, ?)",
+        (voter_first_name, voter_last_name, party_affiliation, voter_id),
+    )
+    conn.commit()
+
+    # display voter id
+    report_info(f"Your voter id is {voter_id}. Please remember this number for voting.")
+    print("voter id:", voter_id)
+
+
 registration = Frame(root)
 notebook.add(registration, text="Registration")
 
