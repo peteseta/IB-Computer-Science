@@ -658,6 +658,11 @@ def select_graph(direction):
         (candidates[i], races[curr_graph][0])
     ).fetchone() for i in range(len(candidates))]
 
+    # guard clause: if no votes at all, don't draw pie
+    if sum(votes) == 0:
+        results_canvas.itemconfig(res_position_name, text="No votes yet!")
+        return
+
     pie(candidates, votes)
 
 
@@ -721,8 +726,15 @@ res_right_arrow = Button(
 )
 res_right_arrow.place(x=77.0, y=43.0, width=36.0, height=30.0)
 
-# first time drawing of results for default (first race)
-select_graph(1)
+
+# draw the pie chart for the default (first race) when its tab is selected
+def on_tab_change(event):
+    tab = event.widget.tab('current')['text']
+    if tab == 'Results':
+        select_graph(1)
+
+
+notebook.bind('<<NotebookTabChanged>>', on_tab_change)
 
 # tkinter loop
 root.mainloop()
