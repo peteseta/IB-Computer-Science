@@ -1,13 +1,15 @@
 from random import randint
 from sqlite3 import *
-from tkinter import Tk, Canvas, Entry, Frame, ttk, NORMAL, DISABLED, Text, StringVar
+from tkinter import Tk, Canvas, Entry, Frame, ttk, NORMAL, DISABLED, Text, StringVar, END
 
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.figure import Figure
 from tkmacosx import Button
 
 # TODO: class-ify and refactor into files
 
 # --------- voting config ---------
-# TODO: move this to a config file
+# TODO: move this to a config file/database.
 parties = ["'A' Party", "'B' Party"]
 races = [["President", "Mr. Erik Wilensky", "Mr. Asit Meswani"],
          ["Vice President", "Ben Wong-Fodor", "Pera Kasemsripitak"],
@@ -15,9 +17,8 @@ races = [["President", "Mr. Erik Wilensky", "Mr. Asit Meswani"],
 
 # --------- database setup ---------
 conn = connect("voting_booth.db")
+conn.row_factory = lambda cursor, row: row[0]  # to make fetching a column return a simple list rather than a tuple
 cursor = conn.cursor()
-
-voter_id = 00000
 
 # create table if it doesn't exist
 if (
@@ -25,12 +26,21 @@ if (
         == 0
 ):
     print("Creating tables...")
-    cursor.execute(
+    cursor.execute(  # table voters: for storing voter info
         """CREATE TABLE voters(
         first_name TEXT,
         last_name TEXT,
         party_affiliation INTEGER,
         voter_id INTEGER
+        )"""
+    )
+    cursor.execute(  # table votes: for storing each vote cast for the specific race, candidate, and by the voter id
+        """create table votes(
+        race           TEXT    not null,
+        candidate_name TEXT    not null,
+        voter_id       integer not null
+            constraint voter_id
+                references voters (voter_id)
         )"""
     )
     conn.commit()
@@ -168,17 +178,17 @@ def register_party_affil(party):
     if party == parties[0]:
         # make "selected" text element active
         registration_canvas.itemconfig(reg_rep_selected, state=DISABLED)
-        registration_canvas.itemconfig(reg_dem_selected, state=NORMAL)
+        registration_canvas.itemconfig(reg_a_selected, state=NORMAL)
         reg_party_affiliation = 0
     else:
         # make "selected" text element active
-        registration_canvas.itemconfig(reg_dem_selected, state=DISABLED)
+        registration_canvas.itemconfig(reg_a_selected, state=DISABLED)
         registration_canvas.itemconfig(reg_rep_selected, state=NORMAL)
         reg_party_affiliation = 1
 
 
 # democrat party affil button
-reg_dem_affil_button = Button(
+reg_a_affil_button = Button(
     registration,
     text=parties[0],
     font="Helvetica 18",
@@ -189,10 +199,10 @@ reg_dem_affil_button = Button(
     command=lambda: register_party_affil(parties[0]),
     relief="flat",
 )
-reg_dem_affil_button.place(x=30.0, y=295.0, width=108.0, height=37.0)
+reg_a_affil_button.place(x=30.0, y=295.0, width=108.0, height=37.0)
 
-# democrat party selected indicator
-reg_dem_selected = registration_canvas.create_text(
+# party a selected indicator
+reg_a_selected = registration_canvas.create_text(
     44.0,
     336.0,
     state=DISABLED,
@@ -203,7 +213,7 @@ reg_dem_selected = registration_canvas.create_text(
     font=("Helvetica Regular", 15 * -1),
 )
 
-# republican party affil button
+# party b affil button
 reg_rep_affil_button = Button(
     registration,
     text=parties[1],
@@ -333,7 +343,7 @@ voting_canvas = Canvas(
 )
 voting_canvas.pack(expand=True, fill="both")
 
-# voting id entry
+# voter id entry heading
 voting_canvas.create_text(
     30.0,
     25.0,
@@ -343,6 +353,7 @@ voting_canvas.create_text(
     font=("Helvetica Bold", 20),
 )
 
+# voter id entry
 vot_voterid_entry = Entry(
     voting,
     bd=0,
@@ -353,8 +364,138 @@ vot_voterid_entry = Entry(
 )
 vot_voterid_entry.place(x=30.0, y=54.0, width=135.0, height=42.0)
 
-# ----- vote selector
+# vertical rectangle divider for the voting pane
 voting_canvas.create_rectangle(30.0, 198.0, 35.0, 324.0, fill="#F5F5F5", outline="")
+
+# init variable for the current race the user is voting for
+curr_race = 0
+# all races are initialized as "not yet selected"
+selections = ["not yet selected"] * 3
+
+# text box to report the user's choices
+voting_canvas.create_text(
+    30.0,
+    370.0,
+    anchor="nw",
+    text="here’s who you voted for:",
+    fill="#1B1B1B",
+    font=("Helvetica Bold", 20 * -1),
+)
+vot_feedback_box = Text(voting, bd=0, bg="#F5F5F5", fg="#000716", highlightthickness=0, state=NORMAL, padx=5, pady=5)
+vot_feedback_box.place(x=30.0, y=402.0, width=417.0, height=99.0)
+
+
+# handles updating the feedback box with the user's selections each time a new selection is made
+def update_feedback_box():
+    vot_feedback_box.delete("1.0", END)
+    vot_feedback_box.insert(END, "VOTING REPORT:\n\n")
+    for count, race in enumerate(races):
+        vot_feedback_box.insert(END, f"{race[0]}: {selections[count]}" + '\n')
+
+
+# first time update to show the user that they have not made any selections
+update_feedback_box()
+
+# --- race details ---
+voting_canvas.create_text(
+    44.0,
+    192.0,
+    anchor="nw",
+    text="POSITION",
+    fill="#C8C8C8",
+    font=("Helvetica Regular", 15 * -1),
+)
+
+vot_position_name = voting_canvas.create_text(
+    44.0,
+    211.0,
+    anchor="nw",
+    text=races[curr_race][0],
+    fill="#1B1B1B",
+    font=("Helvetica Bold", 20 * -1),
+)
+
+
+# handles selecting a candidate. updates the selections list and updates the feedback box.
+def select_candidate(candidate):
+    selections[curr_race] = candidate
+    update_feedback_box()
+
+
+# candidate A button + party abbreviation
+vot_candidate_a_button = Button(
+    voting,
+    bg="#F5F5F5",
+    fg="#1C1C1C",
+    font="Helvetica 20",
+    text=f"{races[curr_race][1]}",
+    anchor="w",
+    borderwidth=0,
+    highlightthickness=0,
+    command=lambda: select_candidate(races[curr_race][1]),
+    relief="flat",
+    padx=0,
+    pady=3,
+)
+vot_candidate_a_button.place(x=44.0, y=243.0, width=337.0, height=37.0)
+
+voting_canvas.create_text(
+    392.0,
+    249.0,
+    anchor="nw",
+    text=f"({parties[0][1]})",
+    fill="#C8C8C8",
+    font=("Helvetica Medium", 20 * -1),
+)
+
+# candidate B button + party abbreviation
+vot_candidate_b_button = Button(
+    voting,
+    bg="#F5F5F5",
+    fg="#1C1C1C",
+    font="Helvetica 20",
+    anchor="w",
+    text=f"{races[curr_race][2]}",
+    borderwidth=0,
+    highlightthickness=0,
+    command=lambda: select_candidate(races[curr_race][2]),
+    relief="flat",
+    padx=0,
+    pady=3,
+)
+vot_candidate_b_button.place(x=44.0, y=287.0, width=337.0, height=37.0)
+
+voting_canvas.create_text(
+    392.0,
+    293.0,
+    anchor="nw",
+    text=f"({parties[1][1]})",
+    fill="#C8C8C8",
+    font=("Helvetica Medium", 20 * -1),
+)
+
+
+# --- navigation between races ---
+def select_race(direction):
+    global curr_race
+
+    # if curr is the last element, if direction is 1 then go to the first element
+    if curr_race == len(races) - 1 and direction == 1:
+        curr_race = 0
+    # if curr_race is 0, if direction is -1 then go the last element in races
+    elif curr_race == 0 and direction == -1:
+        curr_race = len(races) - 1
+    # if curr is not the first/last element, if direction is 1 then go to the next element
+    # if curr is not the first/last element, if direction is -1 then go to the previous element
+    else:
+        curr_race = curr_race + direction
+
+    # update text for the position/candidates
+    voting_canvas.itemconfig(vot_nav, text=f"{curr_race + 1} of {len(races)}")
+    voting_canvas.itemconfig(vot_position_name, text=races[curr_race][0])
+    vot_candidate_a_button.configure(text=races[curr_race][1], anchor="center")
+    vot_candidate_b_button.configure(text=races[curr_race][2], anchor="center")
+
 
 voting_canvas.create_text(
     30.0,
@@ -372,7 +513,7 @@ vot_left_arrow = Button(
     bg="#F5F5F5",
     borderwidth=0,
     highlightthickness=0,
-    command=lambda: print("left arrow clicked"),
+    command=lambda: select_race(-1),
     relief="flat",
 )
 vot_left_arrow.place(x=30.0, y=149.0, width=36.0, height=30.0)
@@ -384,120 +525,52 @@ vot_right_arrow = Button(
     bg="#F5F5F5",
     borderwidth=0,
     highlightthickness=0,
-    command=lambda: print("right arrow clicked"),
+    command=lambda: select_race(1),
     relief="flat",
 )
 vot_right_arrow.place(x=73.0, y=149.0, width=36.0, height=30.0)
 
-voting_canvas.create_text(
+vot_nav = voting_canvas.create_text(
     118.0,
     152.0,
     anchor="nw",
-    text="1 of 4",
+    text=f"{curr_race + 1} of {len(races)}",
     fill="#C8C8C8",
     font=("Helvetica Regular", 15 * -1),
 )
 
-voting_canvas.create_text(
-    44.0,
-    211.0,
-    anchor="nw",
-    text="President",
-    fill="#1B1B1B",
-    font=("Helvetica Bold", 20 * -1),
-)
 
-voting_canvas.create_text(
-    44.0,
-    192.0,
-    anchor="nw",
-    text="POSITION",
-    fill="#C8C8C8",
-    font=("Helvetica Regular", 15 * -1),
-)
+# --- vote submission ---
+def submit_votes():
+    vot_voter_id = vot_voterid_entry.get()
 
-# ----- candidate A
-vot_candidate_a_button = Button(
-    voting,
-    bg="#F5F5F5",
-    fg="#1C1C1C",
-    font="Helvetica 20",
-    text="Samath Gurung",
-    justify="left",
-    borderwidth=0,
-    highlightthickness=0,
-    command=lambda: print("choice a clicked"),
-    relief="flat",
-)
-vot_candidate_a_button.place(x=44.0, y=243.0, width=337.0, height=37.0)
+    # guard clause: check that all positions have a selection
+    if "not yet selected" in selections:
+        voting_canvas.itemconfig(vot_submit_header, text="complete your votes.", fill="#FF0000")
+        return
 
-voting_canvas.create_text(
-    293.0,
-    250.0,
-    anchor="nw",
-    text="SELECTED",
-    fill="#848484",
-    font=("Helvetica Regular", 15 * -1),
-)
+    # guard clause: check that a voter id has been entered and that it is valid (voter id exists in voters table)
+    valid_voter_ids = cursor.execute("SELECT voter_id FROM voters").fetchall()
+    if len(vot_voter_id) != 5 or not vot_voter_id.isnumeric() or int(vot_voter_id) not in valid_voter_ids:
+        voting_canvas.itemconfig(vot_submit_header, text="enter a valid voter id.", fill="#FF0000")
+        return
 
-voting_canvas.create_text(
-    392.0,
-    249.0,
-    anchor="nw",
-    text="(R)",
-    fill="#C8C8C8",
-    font=("Helvetica Medium", 20 * -1),
-)
+    # guard clause: check for duplicate vote
+    if cursor.execute("SELECT * FROM votes WHERE voter_id = ?", (vot_voter_id,)).fetchone():
+        voting_canvas.itemconfig(vot_submit_header, text="already voted!", fill="#FF0000")
+        return
 
-# ----- candidate B
-candidate_b_name = StringVar(voting, "Yoyo Feng")
-vot_candidate_b_button = Button(
-    voting,
-    bg="#F5F5F5",
-    fg="#1C1C1C",
-    font="Helvetica 20",
-    textvariable=candidate_b_name,
-    justify="left",
-    borderwidth=0,
-    highlightthickness=0,
-    command=lambda: print("choice b clicked"),
-    relief="flat",
-)
-vot_candidate_b_button.place(x=44.0, y=287.0, width=337.0, height=37.0)
+    # for each position, add the race, candidate_name, and voter id to the votes table
+    voting_canvas.itemconfig(vot_submit_header, text="voting complete.", fill="#1B1B1B")
+    for i in range(len(races)):
+        cursor.execute(
+            "INSERT INTO votes VALUES (?, ?, ?)",
+            (races[i][0], selections[i], int(vot_voter_id)),
+        )
+    conn.commit()
 
-voting_canvas.create_text(
-    293.0,
-    293.0,
-    anchor="nw",
-    text="SELECTED",
-    fill="#848484",
-    font=("Helvetica Regular", 15 * -1),
-)
 
-voting_canvas.create_text(
-    392.0,
-    293.0,
-    anchor="nw",
-    text="(D)",
-    fill="#C8C8C8",
-    font=("Helvetica Medium", 20 * -1),
-)
-
-# summary of what the user voted for
-voting_canvas.create_text(
-    30.0,
-    370.0,
-    anchor="nw",
-    text="here’s who you voted for:",
-    fill="#1B1B1B",
-    font=("Helvetica Bold", 20 * -1),
-)
-
-vot_feedback_box = Text(voting, bd=0, bg="#F5F5F5", fg="#000716", highlightthickness=0)
-vot_feedback_box.place(x=30.0, y=402.0, width=417.0, height=99.0)
-
-# submit button
-voting_canvas.create_text(
+vot_submit_header = voting_canvas.create_text(
     30.0,
     525.0,
     anchor="nw",
@@ -514,7 +587,7 @@ vot_submit_button = Button(
     fg="white",
     borderwidth=0,
     highlightthickness=0,
-    command=lambda: print("submit clicked"),
+    command=lambda: submit_votes(),
     relief="flat",
 )
 vot_submit_button.place(x=30.0, y=553.0, width=90.0, height=29.0)
@@ -527,23 +600,68 @@ notebook.add(results, text="Results")
 results_canvas = Canvas(
     results,
     bg="#FFFFFF",
-    height=617,
+    height=100,
     width=500,
     bd=0,
     highlightthickness=0,
     relief="ridge",
 )
-results_canvas.pack(expand=True, fill="both")
+results_canvas.grid(row=0, column=0)
 
-results_canvas.create_text(
-    231.0,
-    44.0,
-    anchor="nw",
-    text="President",
-    fill="#1B1B1B",
-    font=("Helvetica Bold", 20 * -1),
-)
+# init current race viewed by the user.
+# will be incremented to 1 once the first-time rendering of the graph for the default race
+# (race 1 - president) is done by calling select_graph()
+curr_graph = -1
 
+
+# --- navigation between races ---
+def select_graph(direction):
+    # displays pie chart for votes (sizes) for each candidate (labels)
+    def pie(labels, sizes):
+        pie_frame = Frame(results, background="#FF0000")
+        pie_frame.grid(row=1, column=0)
+
+        fig = Figure(figsize=(5, 5), dpi=100)
+        ax = fig.add_subplot(111)
+
+        ax.pie(sizes, radius=0.5, labels=labels, autopct='%.1f%%',
+               colors=["#D4E5FE", "#FFCDCE"],
+               wedgeprops={'linewidth': 3.0, 'edgecolor': 'white'},
+               textprops={'size': 'large', 'color': '#1B1B1B'},
+               startangle=90)
+
+        fig.tight_layout()
+        chart = FigureCanvasTkAgg(fig, pie_frame)
+        chart.get_tk_widget().pack()
+
+    global curr_graph
+
+    # if curr is the last element, if direction is 1 then go to the first element
+    if curr_graph == len(races) - 1 and direction == 1:
+        curr_graph = 0
+    # if curr_graph is 0, if direction is -1 then go the last element in races
+    elif curr_graph == 0 and direction == -1:
+        curr_graph = len(races) - 1
+    # if curr is not the first/last element, if direction is 1 then go to the next element
+    # if curr is not the first/last element, if direction is -1 then go to the previous element
+    else:
+        curr_graph = curr_graph + direction
+
+    # update the position name and number
+    results_canvas.itemconfig(res_position_name, text=f"{races[curr_graph][0]}")
+    results_canvas.itemconfig(res_nav, text=f"{curr_graph + 1} of {len(races)}")
+
+    # draw new pie chart
+    candidates = [races[curr_graph][1 + i] for i in range(len(races[curr_graph]) - 1)]
+    votes = [cursor.execute(
+        "SELECT COUNT(*) FROM votes WHERE candidate_name = (?) and race = (?)",
+        (candidates[i], races[curr_graph][0])
+    ).fetchone() for i in range(len(candidates))]
+
+    pie(candidates, votes)
+
+
+# name of position/race results are displayed for
 results_canvas.create_text(
     231.0,
     25.0,
@@ -551,6 +669,14 @@ results_canvas.create_text(
     text="RESULTS FOR",
     fill="#C8C8C8",
     font=("Helvetica Regular", 15 * -1),
+)
+res_position_name = results_canvas.create_text(
+    231.0,
+    44.0,
+    anchor="nw",
+    text="President",
+    fill="#1B1B1B",
+    font=("Helvetica Bold", 20 * -1),
 )
 
 results_canvas.create_text(
@@ -562,11 +688,11 @@ results_canvas.create_text(
     font=("Helvetica Regular", 15 * -1),
 )
 
-results_canvas.create_text(
+res_nav = results_canvas.create_text(
     122.0,
     46.0,
     anchor="nw",
-    text="1 of 4",
+    text=f"{curr_graph + 1} of {len(races)}",
     fill="#C8C8C8",
     font=("Helvetica Regular", 15 * -1),
 )
@@ -578,7 +704,7 @@ res_left_arrow = Button(
     bg="#F5F5F5",
     borderwidth=0,
     highlightthickness=0,
-    command=lambda: print("left arrow clicked"),
+    command=lambda: select_graph(-1),
     relief="flat",
 )
 res_left_arrow.place(x=34.0, y=43.0, width=36.0, height=30.0)
@@ -590,10 +716,13 @@ res_right_arrow = Button(
     bg="#F5F5F5",
     borderwidth=0,
     highlightthickness=0,
-    command=lambda: print("right arrow clicked"),
+    command=lambda: select_graph(1),
     relief="flat",
 )
 res_right_arrow.place(x=77.0, y=43.0, width=36.0, height=30.0)
 
-# ----------- keep at end ------------
+# first time drawing of results for default (first race)
+select_graph(1)
+
+# tkinter loop
 root.mainloop()
