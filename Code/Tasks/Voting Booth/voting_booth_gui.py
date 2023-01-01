@@ -11,6 +11,7 @@ from tkmacosx import Button
 # --------- voting config ---------
 # TODO: move this to a config file/database.
 parties = ["'A' Party", "'B' Party"]
+# fully dynamic! add or remove races and candidates and the ui will update accordingly.
 races = [["President", "Mr. Erik Wilensky", "Mr. Asit Meswani"],
          ["Vice President", "Ben Wong-Fodor", "Pera Kasemsripitak"],
          ["Representative", "Kun Kitilimtrakul", "Winnie Savedvanich"]]
@@ -348,7 +349,7 @@ reg_voter_id_text = registration_canvas.create_text(
 
 # ----------- voting ---------------
 
-selections = ["not yet selected"] * 3  # all races are initialized as "not yet selected"
+selections = ["not yet selected"] * len(races)  # all races are initialized as "not yet selected"
 
 voting = Frame(root)
 notebook.add(voting, text="Voting")
@@ -608,130 +609,77 @@ vot_submit_button.place(x=30.0, y=553.0, width=90.0, height=29.0)
 results = Frame(root)
 notebook.add(results, text="Results")
 
-results_canvas = Canvas(
-    results,
-    bg="#FFFFFF",
-    height=100,
-    width=500,
-    bd=0,
-    highlightthickness=0,
-    relief="ridge",
-)
-results_canvas.grid(row=0, column=0)
 
-# init current race viewed by the user.
-# will be incremented to 1 once the first-time rendering of the graph for the default race
-# (race 1 - president) is done by calling select_graph()
-curr_graph = -1
+def show_results():
+    # plot a percentage proportional stacked bar chart (election poll style)
+    bar_frame = Frame(results, background="#FF0000")
+    bar_frame.grid(row=1, column=0)
 
+    def draw_chart():
+        # total number of votes for each position
+        total_votes = [sum(x) for x in vote_results]
 
-# --- navigation and ui updating logic for going next and back between each race ---
-def select_graph(direction, reset=False):
-    def pie(labels, sizes):  # displays pie chart for votes (sizes) for each candidate (labels)
-        pie_frame = Frame(results, background="#FF0000")
-        pie_frame.grid(row=1, column=0)
+        # percentage of votes for each position
+        candidate_1_perc = [round(x[0] / y * 100, 1) for x, y in zip(vote_results, total_votes)]
+        candidate_2_perc = [round(x[1] / y * 100, 1) for x, y in zip(vote_results, total_votes)]
 
-        fig = Figure(figsize=(5, 5), dpi=100)
+        fig = Figure(figsize=(5, 6.2), dpi=100)
         ax = fig.add_subplot(111)
 
-        ax.pie(sizes, radius=0.5, labels=labels, autopct='%.1f%%',
-               colors=["#D4E5FE", "#FFCDCE"],
-               wedgeprops={'linewidth': 3.0, 'edgecolor': 'white'},
-               textprops={'size': 'large', 'color': '#1B1B1B'},
-               startangle=90)
+        for i in range(len(races)):
+            # horizontal bars
+            ax.barh(3 - i, candidate_2_perc[i], height=0.4, label=races[i][1], left=candidate_1_perc[i])
+            ax.barh(3 - i, candidate_1_perc[i], height=0.4, label=races[i][2])
 
+            # label of race
+            ax.text(0, 3 - i + 0.3, races[i][0], ha='left', va='center', fontfamily='Helvetica', fontweight='bold',
+                    fontsize='large')
+
+            # labels for left side candidate
+            ax.text(2, 3 - i + 0.1, races[i][1], ha='left', va='center', fontfamily='Helvetica', fontweight='bold')
+            ax.text(2, 3 - i, str(candidate_1_perc[i]) + "% of votes", ha='left', va='center',
+                    fontfamily='Helvetica')
+            ax.text(2, 3 - i - 0.1, str(vote_results[i][0]) + " votes", ha='left', va='center', fontfamily='Helvetica')
+
+            # labels for right side candidate
+            ax.text(98, 3 - i + 0.1, races[i][2], ha='right', va='center', fontfamily='Helvetica', fontweight='bold')
+            ax.text(98, 3 - i, str(candidate_2_perc[i]) + "% of votes", ha='right', va='center', fontfamily='Helvetica')
+            ax.text(98, 3 - i - 0.1, str(vote_results[i][1]) + " votes", ha='right', va='center',
+                    fontfamily='Helvetica')
+
+        # labels
+        ax.set_xlabel('Percentage of Votes')
+        ax.set_xticks(range(0, 101, 10))
+        ax.set_yticks([])
+
+        # no borders
         fig.tight_layout()
-        chart = FigureCanvasTkAgg(fig, pie_frame)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+
+        chart = FigureCanvasTkAgg(fig, bar_frame)
         chart.get_tk_widget().pack()
 
-    global curr_graph
-    # get index of next graph to be displayed. if the draw is due to a tab change (reset=True), then display race 0
-    curr_graph = next_back_navigation(curr_graph, direction) if not reset else 0
-
     # fetch name and vote count data for the candidates of the current race
-    candidates = [races[curr_graph][1 + i] for i in range(len(races[curr_graph]) - 1)]
-    votes = [cursor.execute(
-        "SELECT COUNT(*) FROM votes WHERE candidate_name = (?) and race = (?)",
-        (candidates[i], races[curr_graph][0])
-    ).fetchone() for i in range(len(candidates))]
+    vote_results = [[0] * 2 for _ in range(len(races))]
+    for race in range(len(races)):
+        for candidate in range(len(races[race]) - 1):
+            vote_results[race][candidate] = \
+                cursor.execute("SELECT COUNT(*) FROM votes WHERE candidate_name = (?) AND race = (?)",
+                               (races[race][candidate + 1], races[race][0])).fetchone()
 
     # guard clause: if no votes at all, don't draw pie
-    if sum(votes) == 0:
-        results_canvas.itemconfig(res_position_name, text="No votes yet!")
-        return
+    if 0 in map(sum, vote_results):
+        print("no votes yet!")
+    else:
+        draw_chart()
 
-    # update the position name and number
-    results_canvas.itemconfig(res_position_name, text=f"{races[curr_graph][0]}")
-    results_canvas.itemconfig(res_nav, text=f"{curr_graph + 1} of {len(races)}")
-
-    pie(candidates, votes)
-
-
-# --- race navigation ---
-
-# name of position/race results are displayed for
-results_canvas.create_text(
-    231.0,
-    25.0,
-    anchor="nw",
-    text="RESULTS FOR",
-    fill="#C8C8C8",
-    font=("Helvetica Regular", 15 * -1),
-)
-res_position_name = results_canvas.create_text(
-    231.0,
-    44.0,
-    anchor="nw",
-    text="President",
-    fill="#1B1B1B",
-    font=("Helvetica Bold", 20 * -1),
-)
-
-results_canvas.create_text(
-    34.0,
-    20.0,
-    anchor="nw",
-    text="SWITCH RACE",
-    fill="#C8C8C8",
-    font=("Helvetica Regular", 15 * -1),
-)
-
-res_nav = results_canvas.create_text(
-    122.0,
-    46.0,
-    anchor="nw",
-    text=f"1 of {len(races)}",
-    fill="#C8C8C8",
-    font=("Helvetica Regular", 15 * -1),
-)
-
-res_left_arrow = Button(
-    results,
-    text="←",
-    fg="#C9C9C9",
-    bg="#F5F5F5",
-    borderwidth=0,
-    highlightthickness=0,
-    command=lambda: select_graph(-1),
-    relief="flat",
-)
-res_left_arrow.place(x=34.0, y=43.0, width=36.0, height=30.0)
-
-res_right_arrow = Button(
-    results,
-    text="→",
-    fg="#C9C9C9",
-    bg="#F5F5F5",
-    borderwidth=0,
-    highlightthickness=0,
-    command=lambda: select_graph(1),
-    relief="flat",
-)
-res_right_arrow.place(x=77.0, y=43.0, width=36.0, height=30.0)
 
 # draw a new chart for the default race (0 - president) every time the results tab is opened
 notebook.bind('<<NotebookTabChanged>>',
-              lambda event: select_graph(1, reset=True) if event.widget.tab('current')['text'] == 'Results' else None)
+              lambda event: show_results() if event.widget.tab('current')['text'] == 'Results' else None)
 
 # tkinter loop
 root.mainloop()
