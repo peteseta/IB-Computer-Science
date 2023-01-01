@@ -17,7 +17,8 @@ races = [["President", "Mr. Erik Wilensky", "Mr. Asit Meswani"],
 
 # --------- database setup ---------
 conn = connect("voting_booth.db")
-conn.row_factory = lambda cursor, row: row[0]  # to make fetching a column return a simple list rather than a tuple
+# to make fetching a column return a list/single element rather than a 1-element-tuple for each element
+conn.row_factory = lambda cursor, row: row[0]
 cursor = conn.cursor()
 
 # create table if it doesn't exist
@@ -58,6 +59,22 @@ root.geometry("550x750")
 root.configure(bg="#1B1B1B")
 root.resizable(False, False)
 
+
+# --------- helper functions ---------
+# determines the index of the next race when using forward/back buttons
+def next_back_navigation(curr, direction):  # direction: 1 for next, -1 for back
+    # if curr is the last element, if direction is 1 then go to the first element
+    if curr == len(races) - 1 and direction == 1:
+        return 0
+    # if curr_graph is 0, if direction is -1 then go the last element in races
+    elif curr == 0 and direction == -1:
+        return len(races) - 1
+    # if curr is not the first/last element, if direction is 1 then go to the next element
+    # if curr is not the first/last element, if direction is -1 then go to the previous element
+    else:
+        return curr + direction
+
+
 # ----------- title ---------------
 
 title_canvas = Canvas(
@@ -77,6 +94,7 @@ title_canvas.create_text(
 
 # ----------- registration ---------------
 
+# init registration variables
 reg_first_name = StringVar()
 reg_last_name = StringVar()
 reg_party_affiliation = -1
@@ -95,9 +113,9 @@ registration_canvas = Canvas(
 )
 registration_canvas.pack(expand=True, fill="both")
 
+# --- title ---
 registration_canvas.create_rectangle(0.0, 0.0, 500.0, 81.0, fill="#F5F5F5", outline="")
 
-# title
 registration_canvas.create_text(
     30.0,
     18.0,
@@ -107,7 +125,6 @@ registration_canvas.create_text(
     font=("Helvetica Bold", 20 * -1),
 )
 
-# subtitle
 registration_canvas.create_text(
     30.0,
     39.0,
@@ -117,6 +134,7 @@ registration_canvas.create_text(
     font=("Helvetica Regular", 20 * -1),
 )
 
+# --- personal detail entry ---
 # first name heading
 registration_canvas.create_text(
     30.0,
@@ -161,7 +179,7 @@ reg_last_name_entry = Entry(
 )
 reg_last_name_entry.place(x=30.0, y=214.0, width=430.0, height=29.0)
 
-# party affil heading
+# party affiliation heading
 registration_canvas.create_text(
     30.0,
     263.0,
@@ -172,22 +190,23 @@ registration_canvas.create_text(
 )
 
 
-# --- party affil buttons ---
+# --- party affiliation ---
+# sets the party affil variable and shows the "selected" text below the button of the chosen party
 def register_party_affil(party):
     global reg_party_affiliation
     if party == parties[0]:
         # make "selected" text element active
-        registration_canvas.itemconfig(reg_rep_selected, state=DISABLED)
+        registration_canvas.itemconfig(reg_b_selected, state=DISABLED)
         registration_canvas.itemconfig(reg_a_selected, state=NORMAL)
         reg_party_affiliation = 0
     else:
         # make "selected" text element active
         registration_canvas.itemconfig(reg_a_selected, state=DISABLED)
-        registration_canvas.itemconfig(reg_rep_selected, state=NORMAL)
+        registration_canvas.itemconfig(reg_b_selected, state=NORMAL)
         reg_party_affiliation = 1
 
 
-# democrat party affil button
+# party a affiliation button
 reg_a_affil_button = Button(
     registration,
     text=parties[0],
@@ -213,8 +232,8 @@ reg_a_selected = registration_canvas.create_text(
     font=("Helvetica Regular", 15 * -1),
 )
 
-# party b affil button
-reg_rep_affil_button = Button(
+# party b affiliation button
+reg_b_affil_button = Button(
     registration,
     text=parties[1],
     font="Helvetica 18",
@@ -225,10 +244,10 @@ reg_rep_affil_button = Button(
     command=lambda: register_party_affil(parties[1]),
     relief="flat",
 )
-reg_rep_affil_button.place(x=145.0, y=295.0, width=118.0, height=37.0)
+reg_b_affil_button.place(x=145.0, y=295.0, width=118.0, height=37.0)
 
-# republican party selected indicator
-reg_rep_selected = registration_canvas.create_text(
+# party b selected indicator
+reg_b_selected = registration_canvas.create_text(
     165.0,
     336.0,
     state=DISABLED,
@@ -240,20 +259,17 @@ reg_rep_selected = registration_canvas.create_text(
 )
 
 
-# --- submission ---
+# --- registration submission ---
 def register_voter():
     # copy voter info to local variables
     voter_first_name = reg_first_name.get()
     voter_last_name = reg_last_name.get()
     voter_party_affiliation = reg_party_affiliation
 
-    # validate input/check for complete form entry
+    # guard clause: validate input/check for complete form entry
     if voter_first_name == "" or voter_last_name == "" or voter_party_affiliation == -1:
         registration_canvas.itemconfig(reg_submit_header, text="complete all the forms.", fill="#FF0000")
         return
-
-    registration_canvas.itemconfig(reg_submit_header, text="registration complete.", fill="#1B1B1B")
-    print(f"Registering {voter_first_name} {voter_last_name} with party {voter_party_affiliation}...")
 
     # generate a random 5 digit voter id that isn't already taken
     taken_voter_ids = cursor.execute("SELECT voter_id FROM voters").fetchall()
@@ -270,6 +286,10 @@ def register_voter():
         (voter_first_name, voter_last_name, voter_party_affiliation, voter_id),
     )
     conn.commit()
+
+    # display success message
+    registration_canvas.itemconfig(reg_submit_header, text="registration complete.", fill="#1B1B1B")
+    print(f"Registered {voter_first_name} {voter_last_name} with party {voter_party_affiliation}...")
 
     # display voter id
     registration_canvas.itemconfig(reg_voter_id_text, text=voter_id, state=NORMAL)
@@ -300,7 +320,7 @@ reg_submit_button = Button(
 )
 reg_submit_button.place(x=30.0, y=553.0, width=90.0, height=29.0)
 
-# voter id heading
+# --- voter id display ---
 registration_canvas.create_text(
     325.0,
     525.0,
@@ -310,7 +330,6 @@ registration_canvas.create_text(
     font=("Helvetica Bold", 20 * -1),
 )
 
-# voter id highlight
 reg_voter_id_underline = registration_canvas.create_rectangle(
     355.0, 583.0, 455.0, 589.0, fill="#F5F5F5", disabledfill="#FFFFFF", outline="", state=DISABLED
 )
@@ -329,6 +348,8 @@ reg_voter_id_text = registration_canvas.create_text(
 
 # ----------- voting ---------------
 
+selections = ["not yet selected"] * 3  # all races are initialized as "not yet selected"
+
 voting = Frame(root)
 notebook.add(voting, text="Voting")
 
@@ -343,7 +364,7 @@ voting_canvas = Canvas(
 )
 voting_canvas.pack(expand=True, fill="both")
 
-# voter id entry heading
+# --- title and voter id entry ---
 voting_canvas.create_text(
     30.0,
     25.0,
@@ -353,7 +374,6 @@ voting_canvas.create_text(
     font=("Helvetica Bold", 20),
 )
 
-# voter id entry
 vot_voterid_entry = Entry(
     voting,
     bd=0,
@@ -364,15 +384,7 @@ vot_voterid_entry = Entry(
 )
 vot_voterid_entry.place(x=30.0, y=54.0, width=135.0, height=42.0)
 
-# vertical rectangle divider for the voting pane
-voting_canvas.create_rectangle(30.0, 198.0, 35.0, 324.0, fill="#F5F5F5", outline="")
-
-# init variable for the current race the user is voting for
-curr_race = 0
-# all races are initialized as "not yet selected"
-selections = ["not yet selected"] * 3
-
-# text box to report the user's choices
+# --- selection feedback ---
 voting_canvas.create_text(
     30.0,
     370.0,
@@ -387,16 +399,24 @@ vot_feedback_box.place(x=30.0, y=402.0, width=417.0, height=99.0)
 
 # handles updating the feedback box with the user's selections each time a new selection is made
 def update_feedback_box():
-    vot_feedback_box.delete("1.0", END)
-    vot_feedback_box.insert(END, "VOTING REPORT:\n\n")
-    for count, race in enumerate(races):
+    vot_feedback_box.delete("1.0", END)  # clear the feedback box
+    vot_feedback_box.insert(END, "VOTING REPORT:\n\n")  # add header
+    for count, race in enumerate(races):  # add each selection
         vot_feedback_box.insert(END, f"{race[0]}: {selections[count]}" + '\n')
 
 
 # first time update to show the user that they have not made any selections
 update_feedback_box()
 
-# --- race details ---
+# --- race selection ---
+
+# vertical rectangle divider for the voting pane
+voting_canvas.create_rectangle(30.0, 198.0, 35.0, 324.0, fill="#F5F5F5", outline="")
+
+# init variable for the current race the user is voting for
+curr_race = 0
+
+# --- position + candidate details ---
 voting_canvas.create_text(
     44.0,
     192.0,
@@ -416,10 +436,10 @@ vot_position_name = voting_canvas.create_text(
 )
 
 
-# handles selecting a candidate. updates the selections list and updates the feedback box.
+# handles selecting a candidate. called each time a candidate's button is pressed
 def select_candidate(candidate):
-    selections[curr_race] = candidate
-    update_feedback_box()
+    selections[curr_race] = candidate  # update selections list
+    update_feedback_box()  # update the feedback box
 
 
 # candidate A button + party abbreviation
@@ -475,22 +495,12 @@ voting_canvas.create_text(
 )
 
 
-# --- navigation between races ---
+# --- navigation and ui updating logic for going next and back between races ---
 def select_race(direction):
     global curr_race
+    curr_race = next_back_navigation(curr_race, direction)  # get index of next race to be displayed
 
-    # if curr is the last element, if direction is 1 then go to the first element
-    if curr_race == len(races) - 1 and direction == 1:
-        curr_race = 0
-    # if curr_race is 0, if direction is -1 then go the last element in races
-    elif curr_race == 0 and direction == -1:
-        curr_race = len(races) - 1
-    # if curr is not the first/last element, if direction is 1 then go to the next element
-    # if curr is not the first/last element, if direction is -1 then go to the previous element
-    else:
-        curr_race = curr_race + direction
-
-    # update text for the position/candidates
+    # update text for the navigation, race, and candidate names
     voting_canvas.itemconfig(vot_nav, text=f"{curr_race + 1} of {len(races)}")
     voting_canvas.itemconfig(vot_position_name, text=races[curr_race][0])
     vot_candidate_a_button.configure(text=races[curr_race][1], anchor="center")
@@ -530,6 +540,7 @@ vot_right_arrow = Button(
 )
 vot_right_arrow.place(x=73.0, y=149.0, width=36.0, height=30.0)
 
+# navigation text (e.g. 1 of 4)
 vot_nav = voting_canvas.create_text(
     118.0,
     152.0,
@@ -541,7 +552,7 @@ vot_nav = voting_canvas.create_text(
 
 
 # --- vote submission ---
-def submit_votes():
+def submit_votes():  # called when the submit button is pressed
     vot_voter_id = vot_voterid_entry.get()
 
     # guard clause: check that all positions have a selection
@@ -560,7 +571,7 @@ def submit_votes():
         voting_canvas.itemconfig(vot_submit_header, text="already voted!", fill="#FF0000")
         return
 
-    # for each position, add the race, candidate_name, and voter id to the votes table
+    # for each race, add the race name, chosen candidate name, and voter id to the votes table
     voting_canvas.itemconfig(vot_submit_header, text="voting complete.", fill="#1B1B1B")
     for i in range(len(races)):
         cursor.execute(
@@ -614,10 +625,9 @@ results_canvas.grid(row=0, column=0)
 curr_graph = -1
 
 
-# --- navigation between races ---
-def select_graph(direction):
-    # displays pie chart for votes (sizes) for each candidate (labels)
-    def pie(labels, sizes):
+# --- navigation and ui updating logic for going next and back between each race ---
+def select_graph(direction, reset=False):
+    def pie(labels, sizes):  # displays pie chart for votes (sizes) for each candidate (labels)
         pie_frame = Frame(results, background="#FF0000")
         pie_frame.grid(row=1, column=0)
 
@@ -635,23 +645,10 @@ def select_graph(direction):
         chart.get_tk_widget().pack()
 
     global curr_graph
+    # get index of next graph to be displayed. if the draw is due to a tab change (reset=True), then display race 0
+    curr_graph = next_back_navigation(curr_graph, direction) if not reset else 0
 
-    # if curr is the last element, if direction is 1 then go to the first element
-    if curr_graph == len(races) - 1 and direction == 1:
-        curr_graph = 0
-    # if curr_graph is 0, if direction is -1 then go the last element in races
-    elif curr_graph == 0 and direction == -1:
-        curr_graph = len(races) - 1
-    # if curr is not the first/last element, if direction is 1 then go to the next element
-    # if curr is not the first/last element, if direction is -1 then go to the previous element
-    else:
-        curr_graph = curr_graph + direction
-
-    # update the position name and number
-    results_canvas.itemconfig(res_position_name, text=f"{races[curr_graph][0]}")
-    results_canvas.itemconfig(res_nav, text=f"{curr_graph + 1} of {len(races)}")
-
-    # draw new pie chart
+    # fetch name and vote count data for the candidates of the current race
     candidates = [races[curr_graph][1 + i] for i in range(len(races[curr_graph]) - 1)]
     votes = [cursor.execute(
         "SELECT COUNT(*) FROM votes WHERE candidate_name = (?) and race = (?)",
@@ -663,8 +660,14 @@ def select_graph(direction):
         results_canvas.itemconfig(res_position_name, text="No votes yet!")
         return
 
+    # update the position name and number
+    results_canvas.itemconfig(res_position_name, text=f"{races[curr_graph][0]}")
+    results_canvas.itemconfig(res_nav, text=f"{curr_graph + 1} of {len(races)}")
+
     pie(candidates, votes)
 
+
+# --- race navigation ---
 
 # name of position/race results are displayed for
 results_canvas.create_text(
@@ -697,7 +700,7 @@ res_nav = results_canvas.create_text(
     122.0,
     46.0,
     anchor="nw",
-    text=f"{curr_graph + 1} of {len(races)}",
+    text=f"1 of {len(races)}",
     fill="#C8C8C8",
     font=("Helvetica Regular", 15 * -1),
 )
@@ -726,15 +729,9 @@ res_right_arrow = Button(
 )
 res_right_arrow.place(x=77.0, y=43.0, width=36.0, height=30.0)
 
-
-# draw the pie chart for the default (first race) when its tab is selected
-def on_tab_change(event):
-    tab = event.widget.tab('current')['text']
-    if tab == 'Results':
-        select_graph(1)
-
-
-notebook.bind('<<NotebookTabChanged>>', on_tab_change)
+# draw a new chart for the default race (0 - president) every time the results tab is opened
+notebook.bind('<<NotebookTabChanged>>',
+              lambda event: select_graph(1, reset=True) if event.widget.tab('current')['text'] == 'Results' else None)
 
 # tkinter loop
 root.mainloop()
