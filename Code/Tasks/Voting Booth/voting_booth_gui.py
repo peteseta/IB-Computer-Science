@@ -1,17 +1,17 @@
 from random import randint
-from sqlite3 import *
+from sqlite3 import connect
 from tkinter import Tk, Canvas, Entry, Frame, ttk, NORMAL, DISABLED, Text, StringVar, END
 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from tkmacosx import Button
 
-# TODO: class-ify and refactor into files
+# TODO: class-ify and refactor into files. maybe the ui elements can be in a file separate to the logic
 
 # --------- voting config ---------
 # TODO: move this to a config file/database.
 parties = ["'A' Party", "'B' Party"]
-# fully dynamic! add or remove races and candidates and the ui will update accordingly.
+# fully dynamic! add or remove races and the ui will update accordingly. (limited to two-party elections)
 races = [["President", "Mr. Erik Wilensky", "Mr. Asit Meswani"],
          ["Vice President", "Ben Wong-Fodor", "Pera Kasemsripitak"],
          ["Representative", "Kun Kitilimtrakul", "Winnie Savedvanich"]]
@@ -22,7 +22,7 @@ conn = connect("voting_booth.db")
 conn.row_factory = lambda cursor, row: row[0]
 cursor = conn.cursor()
 
-# create table if it doesn't exist
+# create tables if the db doesn't exist
 if (
         len(cursor.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall())
         == 0
@@ -30,10 +30,10 @@ if (
     print("Creating tables...")
     cursor.execute(  # table voters: for storing voter info
         """CREATE TABLE voters(
-        first_name TEXT,
-        last_name TEXT,
-        party_affiliation INTEGER,
-        voter_id INTEGER
+        first_name          TEXT,
+        last_name           TEXT,
+        party_affiliation   integer,
+        voter_id            integer
         )"""
     )
     cursor.execute(  # table votes: for storing each vote cast for the specific race, candidate, and by the voter id
@@ -47,18 +47,30 @@ if (
     )
     conn.commit()
 
-# --------- tkinter setup ----------
-
+# --------- tkinter setup ---------
 root = Tk()
-
-notebook = ttk.Notebook(
-    root,
-)
-notebook.grid(row=1)
-
 root.geometry("550x750")
 root.configure(bg="#1B1B1B")
 root.resizable(False, False)
+
+# placeholder title
+title_canvas = Canvas(
+    root, bg="#1B1B1B", height=83, width=550, bd=0, highlightthickness=0, relief="flat"
+)
+title_canvas.grid(row=0)
+
+# big title
+title_canvas.create_text(
+    30.0,
+    24.0,
+    anchor="nw",
+    text="voting machine #00000",
+    fill="#FFFFFF",
+    font=("Helvetica Bold", 32),
+)
+
+notebook = ttk.Notebook(root)
+notebook.grid(row=1)
 
 
 # --------- helper functions ---------
@@ -75,23 +87,6 @@ def next_back_navigation(curr, direction):  # direction: 1 for next, -1 for back
     else:
         return curr + direction
 
-
-# ----------- title ---------------
-
-title_canvas = Canvas(
-    root, bg="#1B1B1B", height=83, width=550, bd=0, highlightthickness=0, relief="flat"
-)
-title_canvas.grid(row=0)
-
-# big title
-title_canvas.create_text(
-    30.0,
-    24.0,
-    anchor="nw",
-    text="voting machine #00000",
-    fill="#FFFFFF",
-    font=("Helvetica Bold", 32 * -1),
-)
 
 # ----------- registration ---------------
 
@@ -123,7 +118,7 @@ registration_canvas.create_text(
     anchor="nw",
     text="registration",
     fill="#1B1B1B",
-    font=("Helvetica Bold", 20 * -1),
+    font=("Helvetica Bold", 20),
 )
 
 registration_canvas.create_text(
@@ -132,7 +127,7 @@ registration_canvas.create_text(
     anchor="nw",
     text="enter your information to register to vote.",
     fill="#1B1B1B",
-    font=("Helvetica Regular", 20 * -1),
+    font=("Helvetica Regular", 20),
 )
 
 # --- personal detail entry ---
@@ -143,7 +138,7 @@ registration_canvas.create_text(
     anchor="nw",
     text="first name",
     fill="#1B1B1B",
-    font=("Helvetica Bold", 20 * -1),
+    font=("Helvetica Bold", 20),
 )
 
 # first name entry
@@ -165,7 +160,7 @@ registration_canvas.create_text(
     anchor="nw",
     text="last name",
     fill="#1B1B1B",
-    font=("Helvetica Bold", 20 * -1),
+    font=("Helvetica Bold", 20),
 )
 
 # last name entry
@@ -187,7 +182,7 @@ registration_canvas.create_text(
     anchor="nw",
     text="party affiliation",
     fill="#1B1B1B",
-    font=("Helvetica Bold", 20 * -1),
+    font=("Helvetica Bold", 20),
 )
 
 
@@ -230,7 +225,7 @@ reg_a_selected = registration_canvas.create_text(
     text="SELECTED",
     fill="#C8C8C8",
     disabledfill="#FFFFFF",
-    font=("Helvetica Regular", 15 * -1),
+    font=("Helvetica Regular", 15),
 )
 
 # party b affiliation button
@@ -256,7 +251,7 @@ reg_b_selected = registration_canvas.create_text(
     text="SELECTED",
     fill="#C8C8C8",
     disabledfill="#FFFFFF",
-    font=("Helvetica Regular", 15 * -1),
+    font=("Helvetica Regular", 15),
 )
 
 
@@ -304,7 +299,7 @@ reg_submit_header = registration_canvas.create_text(
     anchor="nw",
     text="submit information:",
     fill="#1B1B1B",
-    font=("Helvetica Bold", 20 * -1),
+    font="Helvetica 20 bold",
 )
 
 # submit button
@@ -573,13 +568,14 @@ def submit_votes():  # called when the submit button is pressed
         return
 
     # for each race, add the race name, chosen candidate name, and voter id to the votes table
-    voting_canvas.itemconfig(vot_submit_header, text="voting complete.", fill="#1B1B1B")
     for i in range(len(races)):
         cursor.execute(
             "INSERT INTO votes VALUES (?, ?, ?)",
             (races[i][0], selections[i], int(vot_voter_id)),
         )
     conn.commit()
+    print(str(vot_voter_id), " voted: ", selections)
+    voting_canvas.itemconfig(vot_submit_header, text="voting complete.", fill="#1B1B1B")
 
 
 vot_submit_header = voting_canvas.create_text(
@@ -610,8 +606,8 @@ results = Frame(root)
 notebook.add(results, text="Results")
 
 
+# plot a percentage proportional stacked bar chart (election poll style)
 def show_results():
-    # plot a percentage proportional stacked bar chart (election poll style)
     bar_frame = Frame(results, background="#FF0000")
     bar_frame.grid(row=1, column=0)
 
@@ -626,39 +622,40 @@ def show_results():
         fig = Figure(figsize=(5, 6.2), dpi=100)
         ax = fig.add_subplot(111)
 
+        # for each race...
         for i in range(len(races)):
-            # horizontal bars
+            # plot horizontal bars
             ax.barh(3 - i, candidate_2_perc[i], height=0.4, label=races[i][1], left=candidate_1_perc[i])
             ax.barh(3 - i, candidate_1_perc[i], height=0.4, label=races[i][2])
 
-            # label of race
-            ax.text(0, 3 - i + 0.3, races[i][0], ha='left', va='center', fontfamily='Helvetica', fontweight='bold',
+            # legend for position/race name
+            ax.text(0, 3 - i + 0.25, races[i][0], ha='left', va='center', fontfamily='Helvetica', fontweight='bold',
                     fontsize='large')
 
-            # labels for left side candidate
-            ax.text(2, 3 - i + 0.1, races[i][1], ha='left', va='center', fontfamily='Helvetica', fontweight='bold')
-            ax.text(2, 3 - i, str(candidate_1_perc[i]) + "% of votes", ha='left', va='center',
-                    fontfamily='Helvetica')
-            ax.text(2, 3 - i - 0.1, str(vote_results[i][0]) + " votes", ha='left', va='center', fontfamily='Helvetica')
+            # legends for candidates (name, pct., vote count) in a loop to make config easier.
+            align = ['left', 'right']  # text alignment for left and right candidate
+            horizontal_offset = [2, 98]  # offset for the legends from left and right
+            for j in range(2):
+                ax.text(horizontal_offset[j], 3 - i + 0.1, races[i][1 + j], ha=align[j], va='center',
+                        fontfamily='Helvetica', fontweight='bold')
+                ax.text(horizontal_offset[j], 3 - i, str(candidate_1_perc[i]) + "% of votes", ha=align[j], va='center',
+                        fontfamily='Helvetica')
+                ax.text(horizontal_offset[j], 3 - i - 0.1, str(vote_results[i][j]) + " votes", ha=align[j], va='center',
+                        fontfamily='Helvetica')
 
-            # labels for right side candidate
-            ax.text(98, 3 - i + 0.1, races[i][2], ha='right', va='center', fontfamily='Helvetica', fontweight='bold')
-            ax.text(98, 3 - i, str(candidate_2_perc[i]) + "% of votes", ha='right', va='center', fontfamily='Helvetica')
-            ax.text(98, 3 - i - 0.1, str(vote_results[i][1]) + " votes", ha='right', va='center',
-                    fontfamily='Helvetica')
-
-        # labels
+        # labels and ticks
         ax.set_xlabel('Percentage of Votes')
         ax.set_xticks(range(0, 101, 10))
         ax.set_yticks([])
 
-        # no borders
+        # layout: no borders
         fig.tight_layout()
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
         ax.spines['bottom'].set_visible(False)
         ax.spines['left'].set_visible(False)
 
+        # pack the chart into the tkinter frame
         chart = FigureCanvasTkAgg(fig, bar_frame)
         chart.get_tk_widget().pack()
 
@@ -677,9 +674,8 @@ def show_results():
         draw_chart()
 
 
-# draw a new chart for the default race (0 - president) every time the results tab is opened
+# draw a new chart every time the results tab is opened (call show_results)
 notebook.bind('<<NotebookTabChanged>>',
               lambda event: show_results() if event.widget.tab('current')['text'] == 'Results' else None)
 
-# tkinter loop
 root.mainloop()
