@@ -1,0 +1,53 @@
+REPO_COPY = []  // empty queue
+ARRAY_COPY = []  // empty queue
+
+bank_counter = 1
+TEMP = []   // empty array
+loop while REPOS.hasNext()
+
+    // copy transaction to temp array
+    loop i from 0 to 3
+        TEMP[i] = REPOS.getNext()
+    end loop
+
+    // copy unmodified transaction to repo copy
+    loop i from 0 to 3
+        REPO_COPY.enqueue(TEMP[i])
+    end loop
+
+    // copy modified transaction to repo copy
+    REPO_COPY.enqueue(TEMP[0])
+    REPO_COPY.enqueue(MY_BANKS[bank_counter])
+    REPO_COPY.enqueue(TEMP[2])
+    REPO_COPY.enqueue(24 - TEMP[3])
+
+    if bank_counter == 999 then
+        bank_counter = 1
+    else
+        bank_counter = bank_counter + 2
+    end if
+end loop
+
+// clear original REPOS
+REPOS.clear()
+
+// copy REPO_COPY back into REPOS
+length = 1
+loop while not REPO_COPY.isEmpty()
+    TEMP = REPO_COPY.dequeue()
+    REPOS.addItem(TEMP)
+    ARRAY_COPY.addItem(TEMP)
+    length = length + 1
+end loop
+
+// map ARRAY_COPY queue to parallel arrays
+loop i from 0 to ((length / 4) - 1)
+    A[i] = ARRAY_COPY.dequeue()
+    B[i] = ARRAY_COPY.dequeue()
+    C[i] = ARRAY_COPY.dequeue()
+    D[i] = ARRAY_COPY.dequeue()
+end loop
+
+BANK.inject()
+
+

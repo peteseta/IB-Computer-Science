@@ -1,0 +1,43 @@
+COLLECTION.resetNext()
+
+odd = []
+even = []
+odd_counter = 0
+even_counter = 0
+
+loop while COLLECTION.hasNext()
+    TEMP = COLLECTION.getNext()
+    if TEMP MOD 2 == 0 then
+        even[even_counter] = TEMP
+        even_counter = even_counter + 1
+    else    
+        odd[odd_counter] = TEMP
+        odd_counter = odd_counter + 1
+end loop
+
+final = []
+FLIP = 0
+odd_counter = 0
+even_counter = 0
+final_counter = 0
+
+loop while (odd_counter < odd.len()) AND (even_counter < even.len())
+    j = 0
+    if FLIP == 0 then
+        loop while odd[odd_counter + j] MOD 3 == 0
+            j = j + 1
+        end loop
+        if not even_counter == even.len() then
+            FINAL[final_counter] = odd[odd_counter + j]
+            final_counter = final_counter + 1
+            FLIP = not FLIP
+        odd_counter = odd_counter + j + 1
+    else
+        loop while even[even_counter + j] MOD 3 == 0
+            j = j + 1
+        end loop
+        FINAL[final_counter] = even[even_counter + j]
+        even_counter = even_counter + j + 1
+        final_counter = final_counter + 1
+        FLIP = not FLIP
+
